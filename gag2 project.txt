@@ -70,10 +70,6 @@ local Options = {
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
-    
-    -- Fixed Threshold inputs
-    WeightThresholdMode = "Above", 
-    WeightThresholdValue = 0,      
 
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
@@ -209,32 +205,13 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.ShovelExceptionMulti = selected end,
 })
 
-FarmTab:CreateSection("Harvesting & Value Filtering")
+FarmTab:CreateSection("Harvesting Filter")
 
 FarmTab:CreateToggle({
     Name = "Auto Harvest Selected Fruits",
     CurrentValue = false,
     Flag = "AutoHarvestToggle",
     Callback = function(v) Options.AutoHarvest = v end,
-})
-
-FarmTab:CreateDropdown({
-    Name = "Threshold Filter Mode",
-    Options = {"Above", "Below"},
-    CurrentOption = "Above",
-    MultipleOptions = false,
-    Flag = "WeightThresholdModeDrop",
-    Callback = function(selected) Options.WeightThresholdMode = selected end,
-})
-
-FarmTab:CreateInput({
-    Name = "Weight / Size Target Value",
-    PlaceholderText = "Ex: 80 (Set 0 to disable)",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(text) 
-        local parsed = tonumber(text)
-        Options.WeightThresholdValue = parsed or 0
-    end,
 })
 
 FarmTab:CreateToggle({
@@ -335,7 +312,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoPlant = v end,
 })
 
-FarmTab:CreateDropdown({
+Assistant:CreateDropdown({
     Name = "Seeds to Plant",
     Options = FruitList,
     CurrentOption = {},
@@ -645,20 +622,12 @@ task.spawn(function()
                         end
                     end
                 end
-                                -- Auto Harvest logic
+                
+                -- Auto Harvest logic (Threshold logic completely removed)
                 if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
                     local shouldHarvest = true
-                    
-                    -- Exact numerical filtering
-                    if Options.WeightThresholdValue > 0 then
-                        if Options.WeightThresholdMode == "Above" and evaluatedValue < Options.WeightThresholdValue then
-                            shouldHarvest = false
-                        elseif Options.WeightThresholdMode == "Below" and evaluatedValue > Options.WeightThresholdValue then
-                            shouldHarvest = false
-                        end
-                    end
 
-                    if Options.FilterMutations and shouldHarvest then
+                    if Options.FilterMutations then
                         if not mutation or not tableContains(Options.HarvestMutations, mutation) then
                             shouldHarvest = false
                         end
@@ -814,6 +783,7 @@ task.spawn(function()
                 pcall(function() WeatherLabel:Set("Phase: " .. activePhase .. " | No active event weather.") end)
             end
         end
+
         -- Teleportation Drops Auto Collectors
         if Options.AutoEventDrops then
             local list = {}
