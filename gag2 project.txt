@@ -876,33 +876,57 @@ task.spawn(function()
             break
         end
 
-        local plotId = LocalPlayer:GetAttribute("PlotId")
-        if plotId then 
-            local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
-            if plot then
-                local plants = plot:FindFirstChild("Plants")
-                if plants then
-                    for _, plant in ipairs(plants:GetChildren()) do
-                        -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
-                        for _, child in ipairs(plant:GetChildren()) do
-                            if child.Name ~= "Fruits" and child:IsA("") then
-                                child.Transparency = _G.HideTrees and 1 or 0
-                            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
-                                for _, desc in ipairs(child:GetDescendants()) do
-                                    if desc:IsA("") then
-                                        desc.Transparency = _G.HideTrees and 1 or 0
+        -- Ensure globals exist (default to visible)
+if _G.HideTrees == nil then _G.HideTrees = false end
+if _G.HideFruits == nil then _G.HideFruits = false end
+
+local plotId = LocalPlayer:GetAttribute("PlotId")
+if plotId then
+    local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+    if plot then
+        local plants = plot:FindFirstChild("Plants")
+        if plants then
+            for _, plant in ipairs(plants:GetChildren()) do
+                -- ---------- Hide/Show Trees (main trunk/leaves models) ----------
+                for _, child in ipairs(plant:GetChildren()) do
+                    if child.Name ~= "Fruits" then
+                        if child:IsA("BasePart") then
+                            -- Set part transparency
+                            child.Transparency = _G.HideTrees and 1 or 0
+                            -- Also hide/show any decals on this part
+                            for _, decal in ipairs(child:GetChildren()) do
+                                if decal:IsA("Decal") then
+                                    decal.Transparency = _G.HideTrees and 1 or 0
+                                end
+                            end
+                        elseif child:IsA("Model") or child:IsA("Folder") then
+                            -- Process all BaseParts inside this container
+                            for _, desc in ipairs(child:GetDescendants()) do
+                                if desc:IsA("BasePart") then
+                                    desc.Transparency = _G.HideTrees and 1 or 0
+                                    -- Handle decals on each part
+                                    for _, decal in ipairs(desc:GetChildren()) do
+                                        if decal:IsA("Decal") then
+                                            decal.Transparency = _G.HideTrees and 1 or 0
+                                        end
                                     end
                                 end
                             end
                         end
+                    end
+                end
 
-                        -- ---------- Hide/Show Fruits ----------
-                        local fruitsFolder = plant:FindFirstChild("Fruits")
-                        if fruitsFolder then
-                            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                                for _, part in ipairs(fruit:GetDescendants()) do
-                                    if part:IsA("BasePart") then
-                                        part.Transparency = _G.HideFruits and 1 or 0
+                -- ---------- Hide/Show Fruits ----------
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                        for _, part in ipairs(fruit:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.Transparency = _G.HideFruits and 1 or 0
+                                -- Hide decals on fruit parts as well
+                                for _, decal in ipairs(part:GetChildren()) do
+                                    if decal:IsA("Decal") then
+                                        decal.Transparency = _G.HideFruits and 1 or 0
                                     end
                                 end
                             end
@@ -912,4 +936,4 @@ task.spawn(function()
             end
         end
     end
-end)
+end
