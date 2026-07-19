@@ -420,7 +420,6 @@ MiscTab:CreateDropdown({
     Flag = "WebhookPetsDrop",
     Callback = function(selected) Options.WebhookPets = selected end,
 })
-
 -- ============================================================
 -- VISUALS TAB
 -- ============================================================
@@ -672,7 +671,6 @@ task.spawn(function()
                 end
             end
         end
-        
         -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
@@ -935,7 +933,6 @@ task.spawn(function()
                 end
             end
         end
-
         -- ---------- Disable/Enable Harvest Button ----------
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if playerGui then
@@ -959,3 +956,4 @@ task.spawn(function()
         end
     end
 end)
+
