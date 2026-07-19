@@ -70,6 +70,10 @@ local Options = {
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
+    
+    -- Threshold configurations
+    WeightThresholdMode = "Above", 
+    WeightThresholdValue = 0,      
 
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
@@ -205,13 +209,31 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.ShovelExceptionMulti = selected end,
 })
 
-FarmTab:CreateSection("Harvesting Filter")
+FarmTab:CreateSection("Harvesting & Value Filtering")
 
 FarmTab:CreateToggle({
     Name = "Auto Harvest Selected Fruits",
     CurrentValue = false,
     Flag = "AutoHarvestToggle",
     Callback = function(v) Options.AutoHarvest = v end,
+})
+
+FarmTab:CreateDropdown({
+    Name = "Threshold Mode",
+    Options = {"Above", "Below"},
+    CurrentOption = "Above",
+    MultipleOptions = false,
+    Flag = "WeightThresholdModeDrop",
+    Callback = function(selected) Options.WeightThresholdMode = selected end,
+})
+
+FarmTab:CreateSlider({
+    Name = "Weight / Size Threshold",
+    Range = {0, 500},
+    Increment = 1,
+    CurrentValue = 0,
+    Flag = "WeightThresholdValueSlider",
+    Callback = function(v) Options.WeightThresholdValue = v end,
 })
 
 FarmTab:CreateToggle({
@@ -312,7 +334,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoPlant = v end,
 })
 
-FarmTab:CreateDropdown({
+MakeTab = FarmTab:CreateDropdown({
     Name = "Seeds to Plant",
     Options = FruitList,
     CurrentOption = {},
@@ -330,7 +352,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoBuyPets = v end,
 })
 
-Assistant:CreateDropdown({
+FarmTab:CreateDropdown({
     Name = "Pets Filter",
     Options = PetList,
     CurrentOption = {},
@@ -540,55 +562,6 @@ local function SmartFly(targetCFrame, toggleCheck)
     end
 end
 
--- HYPER-FAST INSANE HARVEST LOOP
-task.spawn(function()
-    while task.wait(0.05) do -- Evaluates crops 20 times per second
-        if getgenv and getgenv().SECasadaRunningId and getgenv().SECasadaRunningId ~= currentThreadId then
-            break
-        end
-
-        if not Options.AutoHarvest or not Networking then continue end
-        
-        local plotId = LocalPlayer:GetAttribute("PlotId")
-        local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
-        local plants = plot and plot:FindFirstChild("Plants")
-        
-        if plants then
-            for _, plant in ipairs(plants:GetChildren()) do
-                local seedName = plant:GetAttribute("SeedName")
-                if seedName and tableContains(Options.HarvestFruits, seedName) then
-                    local mutation = plant:GetAttribute("Mutation")
-                    
-                    if Options.FilterMutations and (not mutation or not tableContains(Options.HarvestMutations, mutation)) then
-                        continue
-                    end
-                    
-                    local harvestPlantId = plant:GetAttribute("PlantId")
-                    if harvestPlantId then
-                        local fruitsFolder = plant:FindFirstChild("Fruits")
-                        if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
-                            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                                local harvestFruitId = fruit:GetAttribute("FruitId")
-                                if harvestFruitId then
-                                    -- Asynchronously fires remote events rapidly bypassing step yield delays
-                                    task.spawn(function()
-                                        Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
-                                    end)
-                                end
-                            end
-                        else
-                            task.spawn(function()
-                                Networking.Garden.CollectFruit:Fire(harvestPlantId, "")
-                            end)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- GENERAL STANDARD AUTOMATION LOOP
 task.spawn(function()
     while task.wait(1) do
         if getgenv and getgenv().SECasadaRunningId and getgenv().SECasadaRunningId ~= currentThreadId then
@@ -606,17 +579,18 @@ task.spawn(function()
         if plants then
             for _, plant in ipairs(plants:GetChildren()) do
                 local seedName = plant:GetAttribute("SeedName")
+                local mutation = plant:GetAttribute("Mutation")
+                local sizeMulti = plant:GetAttribute("SizeMulti") or 1
                 
-                -- Determine specific crop values
-                local evaluatedValue = plant:GetAttribute("Weight") or plant:GetAttribute("SizeMulti") or 1
+                -- Dynamic sizing evaluation if individual fruits hold attributes
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
-                    local highestFruitMetric = 0
+                    local maxFruitSize = 0
                     for _, f in ipairs(fruitsFolder:GetChildren()) do
-                        local fMetric = f:GetAttribute("Weight") or f:GetAttribute("SizeMulti") or 0
-                        if fMetric > highestFruitMetric then highestFruitMetric = fMetric end
+                        local fSize = f:GetAttribute("SizeMulti") or f:GetAttribute("Weight") or 0
+                        if fSize > maxFruitSize then maxFruitSize = fSize end
                     end
-                    if highestFruitMetric > 0 then evaluatedValue = highestFruitMetric end
+                    if maxFruitSize > 0 then sizeMulti = maxFruitSize end
                 end
 
                 -- Auto Shovel logic
@@ -625,7 +599,7 @@ task.spawn(function()
                     if Options.ShovelExceptionMulti and Options.ShovelExceptionMulti ~= "None" then
                         local limitStr = Options.ShovelExceptionMulti:gsub("x", "")
                         local limitMulti = tonumber(limitStr) or 0
-                        if limitMulti > 0 and evaluatedValue >= limitMulti then
+                        if limitMulti > 0 and sizeMulti >= limitMulti then
                             shouldShovel = false
                         end
                     end
@@ -669,8 +643,45 @@ task.spawn(function()
                         end
                     end
                 end
+                
+                -- Auto Harvest logic
+                if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
+                    local shouldHarvest = true
+                    
+                    -- Threshold check logic (Above / Below)
+                    if Options.WeightThresholdValue > 0 then
+                        if Options.WeightThresholdMode == "Above" and sizeMulti <= Options.WeightThresholdValue then
+                            shouldHarvest = false
+                        elseif Options.WeightThresholdMode == "Below" and sizeMulti >= Options.WeightThresholdValue then
+                            shouldHarvest = false
+                        end
+                    end
+
+                    if Options.FilterMutations and shouldHarvest then
+                        if not mutation or not tableContains(Options.HarvestMutations, mutation) then
+                            shouldHarvest = false
+                        end
+                    end
+                    
+                    if shouldHarvest then
+                        local harvestPlantId = plant:GetAttribute("PlantId")
+                        if harvestPlantId then
+                            if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
+                                for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                                    local harvestFruitId = fruit:GetAttribute("FruitId")
+                                    if harvestFruitId then
+                                        Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
+                                    end
+                                end
+                            else
+                                Networking.Garden.CollectFruit:Fire(harvestPlantId, "")
+                            end
+                        end
+                    end
+                end
             end
         end
+        
         -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
@@ -780,8 +791,7 @@ task.spawn(function()
         if Options.AutoSell then
             Networking.NPCS.SellAll:Fire()
         end
-        
-        -- Weather Label Interface Controller
+                -- Weather Label Interface Controller
         local wv = ReplicatedStorage:FindFirstChild("WeatherValues")
         if wv then
             local ts = DateTime.now().UnixTimestamp
@@ -933,6 +943,7 @@ task.spawn(function()
                 end
             end
         end
+
         -- ---------- Disable/Enable Harvest Button ----------
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if playerGui then
@@ -956,4 +967,3 @@ task.spawn(function()
         end
     end
 end)
-
