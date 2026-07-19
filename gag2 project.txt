@@ -2,7 +2,7 @@
 
 
 
--- loadstring(game:HttpGet('https://raw.githubusercontent.com/SecAsada/Gag2src/refs/heads/main/Gag2'))()
+-- loadstring(game:HttpGet('https://raw.githubusercontent.com/SecAsada/Gag2src2/refs/heads/main/gag2%20project.txt'))()
 
 
 
@@ -10,7 +10,6 @@
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/SecAsada/Rayfield/refs/heads/main/redec'))()
 
 -- ============================================================
 -- LOAD THE LIBRARY
