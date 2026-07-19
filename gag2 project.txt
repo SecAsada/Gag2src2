@@ -1,5 +1,9 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
 -- ============================================================
 -- CREATE WINDOW
 -- ============================================================
@@ -18,9 +22,6 @@ local Window = Rayfield:CreateWindow({
         RememberJoins = true
     },
     KeySystem = false,
-    BackgroundImage = "92122764635655",   
-    BackgroundTransparency = 0.5,                 
-    BackgroundColor = Color3.fromRGB(25, 25, 25)  
 })
 
 -- ============================================================
@@ -30,10 +31,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
-local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 -- ============================================================
@@ -56,45 +53,58 @@ end)
 -- ============================================================
 -- OPTIONS & LISTS
 -- ============================================================
-local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry", "Sunflower", "Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose", "Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom", "Star Fruit", "Sun Bloom", "Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper" }
-local MutationList = { "Gold", "Rainbow", "Electric", "Frozen", "Bloodlit", "Starstruck", "Aurora" }
+local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry ","Sunflower","Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose","Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom","Star Fruit", "Sun Bloom","Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper"  }
+
+
+local MutationList = { "Gold", "Rainbow", "Electric",  "Frozen", "Bloodlit", "Starstruck", "Aurora" }
+
+
 local GearList = { "Common Watering Can", "Common Sprinkler", "Sign", "Megaphone", "Lantern", "Uncommon Sprinkler", "Rare Sprinkler", "Legendary Sprinkler", "Super Sprinkler", "Trowel", "Speed Mushroom", "Jump Mushroom", "Gnome", "Shrink Mushroom", "Supersize Mushroom", "Invisibility Mushroom", "Teleporter", "Legendary Pet Teleporter", "Mythic Pet Teleporter", "Super Pet Teleporter", "Super Watering Can", "Basic Pot", "Flashbang", "Player Magnet", "Grappling Hook", "Wheelbarrow", "Strawberry Sniper" }
+
+
 local PropList = { "Light Crate", "Arch Crate", "Bench Crate", "Bridge Crate", "Seesaw Crate", "Sign Crate", "Teleporter Pad Crate", "Ladder Crate", "Fence Crate", "Owner Door Crate", "Conveyor Crate", "Spring Crate", "Roleplay Crate", "Bear Trap Crate" }
-local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon", "Turtle", "Butterfly", "Bald Eagle", "Firefly" }
+
+
+local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon","Turtle","Butterfly" ,"Bald Eagle" ,"Firefly" }
 
 local Options = {
     AutoShovel = false,
     ShovelFruits = {},
     ShovelExceptionMulti = "None",
+    
     AutoHarvest = false,
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
     
-    -- Threshold configurations
-    WeightThresholdMode = "Above", 
-    WeightThresholdValue = 0,      
-
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
     BuySeeds = {},
+    
     AutoBuyAllGears = false,
     AutoBuyGears = false,
     BuyGears = {},
+    
     AutoBuyAllProps = false,
     AutoBuyProps = false,
     BuyProps = {},
+    
     AutoPlant = false,
     PlantSeeds = {},
+    
     AutoBuyPets = false,
     BuyPets = {},
+    
     AutoCollectBest = false,
     AutoSell = false,
+    
     AutoEventDrops = false,
     AutoMeteor = false,
     AutoGnome = false,
     AutoWildPet = false,
     AutoSheckle = false,
+
+    
     WebhookUrl = "",
     WebhookPets = {}
 }
@@ -152,7 +162,7 @@ MainTab:CreateToggle({
 })
 
 if not _G.SecreAsada_IJConn then
-    _G.SecreAsada_IJConn = UserInputService.JumpRequest:Connect(function()
+    _G.SecreAsada_IJConn = game:GetService("UserInputService").JumpRequest:Connect(function()
         if _G.SecreAsada_InfJump then
             local c = LocalPlayer.Character
             if c and c:FindFirstChild("Humanoid") then
@@ -175,7 +185,7 @@ MainTab:CreateButton({
 MainTab:CreateButton({
     Name = "Rejoin Game",
     Callback = function()
-        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
     end,
 })
 
@@ -209,31 +219,13 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.ShovelExceptionMulti = selected end,
 })
 
-FarmTab:CreateSection("Harvesting & Value Filtering")
+FarmTab:CreateSection("Harvesting")
 
 FarmTab:CreateToggle({
     Name = "Auto Harvest Selected Fruits",
     CurrentValue = false,
     Flag = "AutoHarvestToggle",
     Callback = function(v) Options.AutoHarvest = v end,
-})
-
-FarmTab:CreateDropdown({
-    Name = "Threshold Mode",
-    Options = {"Above", "Below"},
-    CurrentOption = "Above",
-    MultipleOptions = false,
-    Flag = "WeightThresholdModeDrop",
-    Callback = function(selected) Options.WeightThresholdMode = selected end,
-})
-
-FarmTab:CreateSlider({
-    Name = "Weight / Size Threshold",
-    Range = {0, 500},
-    Increment = 1,
-    CurrentValue = 0,
-    Flag = "WeightThresholdValueSlider",
-    Callback = function(v) Options.WeightThresholdValue = v end,
 })
 
 FarmTab:CreateToggle({
@@ -327,6 +319,7 @@ FarmTab:CreateDropdown({
 })
 
 FarmTab:CreateSection("Planting")
+
 FarmTab:CreateToggle({
     Name = "Auto Plant Selected Seeds",
     CurrentValue = false,
@@ -334,7 +327,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoPlant = v end,
 })
 
-MakeTab = FarmTab:CreateDropdown({
+FarmTab:CreateDropdown({
     Name = "Seeds to Plant",
     Options = FruitList,
     CurrentOption = {},
@@ -417,6 +410,28 @@ EventsTab:CreateToggle({
     Callback = function(v) Options.AutoSheckle = v end,
 })
 
+
+VisualsTab:CreateSection("Object Visibility & Interface Control")
+
+_G.HideFruits = false
+VisualsTab:CreateToggle({
+    Name = "Hide All Fruits",
+    CurrentValue = false,
+    Flag = "HideFruitsToggle",
+    Callback = function(on)
+        _G.HideFruits = on
+    end,
+})
+
+_G.HideTrees = false
+VisualsTab:CreateToggle({
+    Name = "Hide All Trees / Plant Models",
+    CurrentValue = false,
+    Flag = "HideTreesToggle",
+    Callback = function(on)
+        _G.HideTrees = on
+    end,
+})
 -- ============================================================
 -- MISC TAB
 -- ============================================================
@@ -442,6 +457,7 @@ MiscTab:CreateDropdown({
     Flag = "WebhookPetsDrop",
     Callback = function(selected) Options.WebhookPets = selected end,
 })
+
 -- ============================================================
 -- VISUALS TAB
 -- ============================================================
@@ -452,7 +468,7 @@ VisualsTab:CreateToggle({
     CurrentValue = false,
     Flag = "FullbrightToggle",
     Callback = function(on)
-        Lighting.Brightness = on and 10 or 1
+        game:GetService("Lighting").Brightness = on and 10 or 1
     end,
 })
 
@@ -464,38 +480,6 @@ VisualsTab:CreateSlider({
     Flag = "FOVModifier",
     Callback = function(v)
         workspace.CurrentCamera.FieldOfView = v
-    end,
-})
-
-VisualsTab:CreateSection("Object Visibility & Interface Control")
-
-_G.HideFruits = false
-VisualsTab:CreateToggle({
-    Name = "Hide All Fruits",
-    CurrentValue = false,
-    Flag = "HideFruitsToggle",
-    Callback = function(on)
-        _G.HideFruits = on
-    end,
-})
-
-_G.HideTrees = false
-VisualsTab:CreateToggle({
-    Name = "Hide All Trees / Plant Models",
-    CurrentValue = false,
-    Flag = "HideTreesToggle",
-    Callback = function(on)
-        _G.HideTrees = on
-    end,
-})
-
-_G.DisableHarvestButton = false
-VisualsTab:CreateToggle({
-    Name = "Disable Harvest Button",
-    CurrentValue = false,
-    Flag = "DisableHarvestToggle",
-    Callback = function(on)
-        _G.DisableHarvestButton = on
     end,
 })
 
@@ -542,7 +526,7 @@ local function SmartFly(targetCFrame, toggleCheck)
         
         root.Anchored = true
         local tweenInfo = TweenInfo.new(burstTime, Enum.EasingStyle.Linear)
-        local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(nextPos) * targetCFrame.Rotation})
+        local tween = game:GetService("TweenService"):Create(root, tweenInfo, {CFrame = CFrame.new(nextPos) * targetCFrame.Rotation})
         tween:Play()
         tween.Completed:Wait()
         
@@ -580,27 +564,56 @@ task.spawn(function()
             for _, plant in ipairs(plants:GetChildren()) do
                 local seedName = plant:GetAttribute("SeedName")
                 local mutation = plant:GetAttribute("Mutation")
-                local sizeMulti = plant:GetAttribute("SizeMulti") or 1
                 
-                -- Dynamic sizing evaluation if individual fruits hold attributes
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                if fruitsFolder then
-                    local maxFruitSize = 0
-                    for _, f in ipairs(fruitsFolder:GetChildren()) do
-                        local fSize = f:GetAttribute("SizeMulti") or f:GetAttribute("Weight") or 0
-                        if fSize > maxFruitSize then maxFruitSize = fSize end
-                    end
-                    if maxFruitSize > 0 then sizeMulti = maxFruitSize end
-                end
-
                 -- Auto Shovel logic
                 if Options.AutoShovel and seedName and tableContains(Options.ShovelFruits, seedName) then
                     local shouldShovel = true
                     if Options.ShovelExceptionMulti and Options.ShovelExceptionMulti ~= "None" then
                         local limitStr = Options.ShovelExceptionMulti:gsub("x", "")
                         local limitMulti = tonumber(limitStr) or 0
-                        if limitMulti > 0 and sizeMulti >= limitMulti then
-                            shouldShovel = false
+                        if limitMulti > 0 then
+                            local sizeMulti = plant:GetAttribute("SizeMulti") or 1
+                            local corePartName = plant:GetAttribute("CorePartName") or plant:GetAttribute("SeedName")
+                            
+                            local fruitsFolder = plant:FindFirstChild("Fruits")
+                            if fruitsFolder then
+                                local bestSize = 0
+                                local bestFruit = nil
+                                for _, f in ipairs(fruitsFolder:GetChildren()) do
+                                    local fSize = f:GetAttribute("SizeMulti") or 0
+                                    if fSize >= bestSize then
+                                        bestSize = fSize
+                                        bestFruit = f
+                                    end
+                                end
+                                if bestFruit then
+                                    sizeMulti = bestSize
+                                    if bestFruit:GetAttribute("CorePartName") then
+                                        corePartName = bestFruit:GetAttribute("CorePartName")
+                                    end
+                                end
+                            end
+
+                            if corePartName and corePartName:match(" Seed$") then
+                                corePartName = corePartName:gsub(" Seed$", "")
+                            end
+
+                            if sizeMulti >= limitMulti then
+                                shouldShovel = false
+                            end
+
+                            if not plant:FindFirstChild("Fruits") or #plant.Fruits:GetChildren() == 0 then
+                                shouldShovel = false
+                            end
+                            
+                            if shouldShovel then
+                                Rayfield:Notify({
+                                    Title = "Auto Shovel Loop",
+                                    Content = string.format("Shoveled %s (%.2fx multi, Target limit: %s)", tostring(corePartName), sizeMulti, tostring(Options.ShovelExceptionMulti)),
+                                    Duration = 3,
+                                    Image = 4483362458,
+                                })
+                            end
                         end
                     end
                     
@@ -625,20 +638,14 @@ task.spawn(function()
                             end
                             if shovel then
                                 local shovelName = shovel:GetAttribute("Shovel") or shovel.Name
-                                if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
+                                local fruitsFolder = plant:FindFirstChild("Fruits")
+                                if fruitsFolder then
                                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                         Networking.Shovel.UseShovel:Fire(plant.Name, fruit.Name, shovelName, shovel)
                                     end
                                 else
                                     Networking.Shovel.UseShovel:Fire(plant.Name, "", shovelName, shovel)
                                 end
-                                
-                                Rayfield:Notify({
-                                    Title = "Auto Shovel Loop",
-                                    Content = string.format("Shoveled %s", tostring(plant.Name)),
-                                    Duration = 2,
-                                    Image = 4483362458,
-                                })
                             end
                         end
                     end
@@ -647,25 +654,15 @@ task.spawn(function()
                 -- Auto Harvest logic
                 if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
                     local shouldHarvest = true
-                    
-                    -- Threshold check logic (Above / Below)
-                    if Options.WeightThresholdValue > 0 then
-                        if Options.WeightThresholdMode == "Above" and sizeMulti <= Options.WeightThresholdValue then
-                            shouldHarvest = false
-                        elseif Options.WeightThresholdMode == "Below" and sizeMulti >= Options.WeightThresholdValue then
-                            shouldHarvest = false
-                        end
-                    end
-
-                    if Options.FilterMutations and shouldHarvest then
+                    if Options.FilterMutations then
                         if not mutation or not tableContains(Options.HarvestMutations, mutation) then
                             shouldHarvest = false
                         end
                     end
-                    
                     if shouldHarvest then
                         local harvestPlantId = plant:GetAttribute("PlantId")
                         if harvestPlantId then
+                            local fruitsFolder = plant:FindFirstChild("Fruits")
                             if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                 for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                     local harvestFruitId = fruit:GetAttribute("FruitId")
@@ -681,8 +678,7 @@ task.spawn(function()
                 end
             end
         end
-        
-        -- Auto Plant Seeds
+           -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
             local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
@@ -722,39 +718,21 @@ task.spawn(function()
         
         -- Auto Shop Buyers
         if Options.AutoBuyAllSeeds then
-            for _, itemName in ipairs(FruitList) do 
-                Networking.SeedShop.PurchaseSeed:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(FruitList) do Networking.SeedShop.PurchaseSeed:Fire(itemName) end
         elseif Options.AutoBuySeeds and Options.BuySeeds then
-            for _, itemName in ipairs(Options.BuySeeds) do 
-                Networking.SeedShop.PurchaseSeed:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(Options.BuySeeds) do Networking.SeedShop.PurchaseSeed:Fire(itemName) end
         end
         
         if Options.AutoBuyAllGears then
-            for _, itemName in ipairs(GearList) do 
-                Networking.GearShop.PurchaseGear:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(GearList) do Networking.GearShop.PurchaseGear:Fire(itemName) end
         elseif Options.AutoBuyGears and Options.BuyGears then
-            for _, itemName in ipairs(Options.BuyGears) do 
-                Networking.GearShop.PurchaseGear:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(Options.BuyGears) do Networking.GearShop.PurchaseGear:Fire(itemName) end
         end
         
         if Options.AutoBuyAllProps then
-            for _, itemName in ipairs(PropList) do 
-                Networking.CrateShop.PurchaseCrate:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(PropList) do Networking.CrateShop.PurchaseCrate:Fire(itemName) end
         elseif Options.AutoBuyProps and Options.BuyProps then
-            for _, itemName in ipairs(Options.BuyProps) do 
-                Networking.CrateShop.PurchaseCrate:Fire(itemName) 
-                task.wait(0.05)
-            end
+            for _, itemName in ipairs(Options.BuyProps) do Networking.CrateShop.PurchaseCrate:Fire(itemName) end
         end
         
         -- Auto Wild Pets Purchaser
@@ -772,10 +750,10 @@ task.spawn(function()
                                 local success = SmartFly(wildPet.RootPart.CFrame, function() return Options.AutoBuyPets end)
                                 if success then
                                     char.HumanoidRootPart.Anchored = false
-                                    task.wait(1.5)
+                                    task.wait(3)
                                     prompt.HoldDuration = 0
                                     fireproximityprompt(prompt)
-                                    task.wait(0.3)
+                                    task.wait(0.5)
                                     fireproximityprompt(prompt)
                                     task.wait(1)
                                     SmartFly(origCFrame, function() return Options.AutoBuyPets end)
@@ -791,8 +769,9 @@ task.spawn(function()
         if Options.AutoSell then
             Networking.NPCS.SellAll:Fire()
         end
-                -- Weather Label Interface Controller
-        local wv = ReplicatedStorage:FindFirstChild("WeatherValues")
+        
+        -- Weather Label Interface Controller
+        local wv = game:GetService("ReplicatedStorage"):FindFirstChild("WeatherValues")
         if wv then
             local ts = DateTime.now().UnixTimestamp
             local activeWeathers = {}
@@ -812,7 +791,6 @@ task.spawn(function()
                 pcall(function() WeatherLabel:Set("Phase: " .. activePhase .. " | No active event weather.") end)
             end
         end
-
         -- Teleportation Drops Auto Collectors
         if Options.AutoEventDrops then
             local list = {}
@@ -854,7 +832,7 @@ task.spawn(function()
                                     task.wait(0.2)
                                     prompt.HoldDuration = 0
                                     fireproximityprompt(prompt)
-                                    task.wait(0.5)
+                                    task.wait(1)
                                     SmartFly(origCFrame, function() return Options.AutoEventDrops end)
                                 end
                                 char.HumanoidRootPart.Anchored = false
@@ -898,7 +876,9 @@ if petsFolder then
             end)
         end
     end)
-end  
+end   
+
+
 
 -- ============================================================
 -- OBJECT VISIBILITY & HARVEST BUTTON CONTROL LOOP
@@ -943,27 +923,4 @@ task.spawn(function()
                 end
             end
         end
-
-        -- ---------- Disable/Enable Harvest Button ----------
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if playerGui then
-            local harvestButton = nil
-            for _, gui in ipairs(playerGui:GetDescendants()) do
-                if gui:IsA("TextButton") and (
-                    gui.Name:lower():find("harvest") or
-                    (gui.Text and gui.Text:lower():find("harvest"))
-                ) then
-                    harvestButton = gui
-                    break
-                end
-            end
-            if harvestButton then
-                harvestButton.Visible = not _G.DisableHarvestButton
-                harvestButton.Active = not _G.DisableHarvestButton
-                pcall(function()
-                    harvestButton.Interactable = not _G.DisableHarvestButton
-                end)
-            end
-        end
-    end
-end)
+        
