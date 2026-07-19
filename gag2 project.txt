@@ -1,3 +1,4 @@
+
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- ============================================================
@@ -70,6 +71,11 @@ local Options = {
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
+    
+    -- Threshold configurations
+    WeightThresholdMode = "Above", 
+    WeightThresholdValue = 0,      
+
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
     BuySeeds = {},
@@ -204,13 +210,31 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.ShovelExceptionMulti = selected end,
 })
 
-FarmTab:CreateSection("Harvesting")
+FarmTab:CreateSection("Harvesting & Value Filtering")
 
 FarmTab:CreateToggle({
     Name = "Auto Harvest Selected Fruits",
     CurrentValue = false,
     Flag = "AutoHarvestToggle",
     Callback = function(v) Options.AutoHarvest = v end,
+})
+
+FarmTab:CreateDropdown({
+    Name = "Threshold Mode",
+    Options = {"Above", "Below"},
+    CurrentOption = "Above",
+    MultipleOptions = false,
+    Flag = "WeightThresholdModeDrop",
+    Callback = function(selected) Options.WeightThresholdMode = selected end,
+})
+
+FarmTab:CreateSlider({
+    Name = "Weight / Size Threshold",
+    Range = {0, 500},
+    Increment = 1,
+    CurrentValue = 0,
+    Flag = "WeightThresholdValueSlider",
+    Callback = function(v) Options.WeightThresholdValue = v end,
 })
 
 FarmTab:CreateToggle({
@@ -304,7 +328,6 @@ FarmTab:CreateDropdown({
 })
 
 FarmTab:CreateSection("Planting")
-
 FarmTab:CreateToggle({
     Name = "Auto Plant Selected Seeds",
     CurrentValue = false,
@@ -312,7 +335,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoPlant = v end,
 })
 
-FarmTab:CreateDropdown({
+MakeTab = FarmTab:CreateDropdown({
     Name = "Seeds to Plant",
     Options = FruitList,
     CurrentOption = {},
@@ -446,7 +469,7 @@ VisualsTab:CreateSlider({
     end,
 })
 
-VisualsTab:CreateSection("Fruit Visibility & Harvest Control")
+VisualsTab:CreateSection("Object Visibility & Interface Control")
 
 _G.HideFruits = false
 VisualsTab:CreateToggle({
@@ -455,6 +478,16 @@ VisualsTab:CreateToggle({
     Flag = "HideFruitsToggle",
     Callback = function(on)
         _G.HideFruits = on
+    end,
+})
+
+_G.HideTrees = false
+VisualsTab:CreateToggle({
+    Name = "Hide All Trees / Plant Models",
+    CurrentValue = false,
+    Flag = "HideTreesToggle",
+    Callback = function(on)
+        _G.HideTrees = on
     end,
 })
 
@@ -549,46 +582,27 @@ task.spawn(function()
             for _, plant in ipairs(plants:GetChildren()) do
                 local seedName = plant:GetAttribute("SeedName")
                 local mutation = plant:GetAttribute("Mutation")
+                local sizeMulti = plant:GetAttribute("SizeMulti") or 1
                 
+                -- Dynamic sizing evaluation if individual fruits hold attributes
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    local maxFruitSize = 0
+                    for _, f in ipairs(fruitsFolder:GetChildren()) do
+                        local fSize = f:GetAttribute("SizeMulti") or f:GetAttribute("Weight") or 0
+                        if fSize > maxFruitSize then maxFruitSize = fSize end
+                    end
+                    if maxFruitSize > 0 then sizeMulti = maxFruitSize end
+                end
+
                 -- Auto Shovel logic
                 if Options.AutoShovel and seedName and tableContains(Options.ShovelFruits, seedName) then
                     local shouldShovel = true
                     if Options.ShovelExceptionMulti and Options.ShovelExceptionMulti ~= "None" then
                         local limitStr = Options.ShovelExceptionMulti:gsub("x", "")
                         local limitMulti = tonumber(limitStr) or 0
-                        if limitMulti > 0 then
-                            local sizeMulti = plant:GetAttribute("SizeMulti") or 1
-                            local corePartName = plant:GetAttribute("CorePartName") or plant:GetAttribute("SeedName")
-                            
-                            local fruitsFolder = plant:FindFirstChild("Fruits")
-                            if fruitsFolder then
-                                local bestSize = 0
-                                local bestFruit = nil
-                                for _, f in ipairs(fruitsFolder:GetChildren()) do
-                                    local fSize = f:GetAttribute("SizeMulti") or 0
-                                    if fSize >= bestSize then
-                                        bestSize = fSize
-                                        bestFruit = f
-                                    end
-                                end
-                                if bestFruit then
-                                    sizeMulti = bestSize
-                                    if bestFruit:GetAttribute("CorePartName") then
-                                        corePartName = bestFruit:GetAttribute("CorePartName")
-                                    end
-                                end
-                            end
-
-                            if corePartName and corePartName:match(" Seed$") then
-                                corePartName = corePartName:gsub(" Seed$", "")
-                            end
-                            if sizeMulti >= limitMulti then
-                                shouldShovel = false
-                            end
-
-                            if not plant:FindFirstChild("Fruits") or #plant.Fruits:GetChildren() == 0 then
-                                shouldShovel = false
-                            end
+                        if limitMulti > 0 and sizeMulti >= limitMulti then
+                            shouldShovel = false
                         end
                     end
                     
@@ -613,7 +627,6 @@ task.spawn(function()
                             end
                             if shovel then
                                 local shovelName = shovel:GetAttribute("Shovel") or shovel.Name
-                                local fruitsFolder = plant:FindFirstChild("Fruits")
                                 if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                         Networking.Shovel.UseShovel:Fire(plant.Name, fruit.Name, shovelName, shovel)
@@ -636,15 +649,25 @@ task.spawn(function()
                 -- Auto Harvest logic
                 if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
                     local shouldHarvest = true
-                    if Options.FilterMutations then
+                    
+                    -- Threshold check logic (Above / Below)
+                    if Options.WeightThresholdValue > 0 then
+                        if Options.WeightThresholdMode == "Above" and sizeMulti <= Options.WeightThresholdValue then
+                            shouldHarvest = false
+                        elseif Options.WeightThresholdMode == "Below" and sizeMulti >= Options.WeightThresholdValue then
+                            shouldHarvest = false
+                        end
+                    end
+
+                    if Options.FilterMutations and shouldHarvest then
                         if not mutation or not tableContains(Options.HarvestMutations, mutation) then
                             shouldHarvest = false
                         end
                     end
+                    
                     if shouldHarvest then
                         local harvestPlantId = plant:GetAttribute("PlantId")
                         if harvestPlantId then
-                            local fruitsFolder = plant:FindFirstChild("Fruits")
                             if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                 for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                     local harvestFruitId = fruit:GetAttribute("FruitId")
@@ -699,7 +722,7 @@ task.spawn(function()
             end
         end
         
-        -- Auto Shop Buyers (with tiny wait intervals to avoid remote kicks)
+        -- Auto Shop Buyers
         if Options.AutoBuyAllSeeds then
             for _, itemName in ipairs(FruitList) do 
                 Networking.SeedShop.PurchaseSeed:Fire(itemName) 
@@ -881,7 +904,7 @@ if petsFolder then
 end  
 
 -- ============================================================
--- FRUIT VISIBILITY & HARVEST BUTTON CONTROL LOOP
+-- OBJECT VISIBILITY & HARVEST BUTTON CONTROL LOOP
 -- ============================================================
 task.spawn(function()
     while task.wait(0.5) do
@@ -894,10 +917,23 @@ task.spawn(function()
         local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
         if not plot then continue end
 
-        -- ---------- Hide/Show Fruits ----------
         local plants = plot:FindFirstChild("Plants")
         if plants then
             for _, plant in ipairs(plants:GetChildren()) do
+                -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
+                for _, child in ipairs(plant:GetChildren()) do
+                    if child.Name ~= "Fruits" and child:IsA("BasePart") then
+                        child.Transparency = _G.HideTrees and 1 or 0
+                    elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
+                        for _, desc in ipairs(child:GetDescendants()) do
+                            if desc:IsA("BasePart") then
+                                desc.Transparency = _G.HideTrees and 1 or 0
+                            end
+                        end
+                    end
+                end
+
+                -- ---------- Hide/Show Fruits ----------
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
@@ -934,3 +970,4 @@ task.spawn(function()
         end
     end
 end)
+
