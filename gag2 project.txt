@@ -1,9 +1,5 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-
--- ============================================================
--- LOAD THE LIBRARY
--- ============================================================
 -- ============================================================
 -- CREATE WINDOW
 -- ============================================================
@@ -54,17 +50,9 @@ end)
 -- OPTIONS & LISTS
 -- ============================================================
 local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry ","Sunflower","Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose","Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom","Star Fruit", "Sun Bloom","Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper"  }
-
-
 local MutationList = { "Gold", "Rainbow", "Electric",  "Frozen", "Bloodlit", "Starstruck", "Aurora" }
-
-
 local GearList = { "Common Watering Can", "Common Sprinkler", "Sign", "Megaphone", "Lantern", "Uncommon Sprinkler", "Rare Sprinkler", "Legendary Sprinkler", "Super Sprinkler", "Trowel", "Speed Mushroom", "Jump Mushroom", "Gnome", "Shrink Mushroom", "Supersize Mushroom", "Invisibility Mushroom", "Teleporter", "Legendary Pet Teleporter", "Mythic Pet Teleporter", "Super Pet Teleporter", "Super Watering Can", "Basic Pot", "Flashbang", "Player Magnet", "Grappling Hook", "Wheelbarrow", "Strawberry Sniper" }
-
-
 local PropList = { "Light Crate", "Arch Crate", "Bench Crate", "Bridge Crate", "Seesaw Crate", "Sign Crate", "Teleporter Pad Crate", "Ladder Crate", "Fence Crate", "Owner Door Crate", "Conveyor Crate", "Spring Crate", "Roleplay Crate", "Bear Trap Crate" }
-
-
 local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon","Turtle","Butterfly" ,"Bald Eagle" ,"Firefly" }
 
 local Options = {
@@ -103,7 +91,6 @@ local Options = {
     AutoGnome = false,
     AutoWildPet = false,
     AutoSheckle = false,
-
     
     WebhookUrl = "",
     WebhookPets = {}
@@ -410,28 +397,6 @@ EventsTab:CreateToggle({
     Callback = function(v) Options.AutoSheckle = v end,
 })
 
-
-VisualsTab:CreateSection("Object Visibility & Interface Control")
-
-_G.HideFruits = false
-VisualsTab:CreateToggle({
-    Name = "Hide All Fruits",
-    CurrentValue = false,
-    Flag = "HideFruitsToggle",
-    Callback = function(on)
-        _G.HideFruits = on
-    end,
-})
-
-_G.HideTrees = false
-VisualsTab:CreateToggle({
-    Name = "Hide All Trees / Plant Models",
-    CurrentValue = false,
-    Flag = "HideTreesToggle",
-    Callback = function(on)
-        _G.HideTrees = on
-    end,
-})
 -- ============================================================
 -- MISC TAB
 -- ============================================================
@@ -480,6 +445,28 @@ VisualsTab:CreateSlider({
     Flag = "FOVModifier",
     Callback = function(v)
         workspace.CurrentCamera.FieldOfView = v
+    end,
+})
+
+VisualsTab:CreateSection("Object Visibility & Interface Control")
+
+_G.HideFruits = false
+VisualsTab:CreateToggle({
+    Name = "Hide All Fruits",
+    CurrentValue = false,
+    Flag = "HideFruitsToggle",
+    Callback = function(on)
+        _G.HideFruits = on
+    end,
+})
+
+_G.HideTrees = false
+VisualsTab:CreateToggle({
+    Name = "Hide All Trees / Plant Models",
+    CurrentValue = false,
+    Flag = "HideTreesToggle",
+    Callback = function(on)
+        _G.HideTrees = on
     end,
 })
 
@@ -678,7 +665,8 @@ task.spawn(function()
                 end
             end
         end
-           -- Auto Plant Seeds
+        
+        -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
             local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
@@ -791,6 +779,7 @@ task.spawn(function()
                 pcall(function() WeatherLabel:Set("Phase: " .. activePhase .. " | No active event weather.") end)
             end
         end
+
         -- Teleportation Drops Auto Collectors
         if Options.AutoEventDrops then
             local list = {}
@@ -878,8 +867,6 @@ if petsFolder then
     end)
 end   
 
-
-
 -- ============================================================
 -- OBJECT VISIBILITY & HARVEST BUTTON CONTROL LOOP
 -- ============================================================
@@ -890,37 +877,39 @@ task.spawn(function()
         end
 
         local plotId = LocalPlayer:GetAttribute("PlotId")
-        if not plotId then continue end
-        local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
-        if not plot then continue end
-
-        local plants = plot:FindFirstChild("Plants")
-        if plants then
-            for _, plant in ipairs(plants:GetChildren()) do
-                -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
-                for _, child in ipairs(plant:GetChildren()) do
-                    if child.Name ~= "Fruits" and child:IsA("BasePart") then
-                        child.Transparency = _G.HideTrees and 1 or 0
-                    elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
-                        for _, desc in ipairs(child:GetDescendants()) do
-                            if desc:IsA("BasePart") then
-                                desc.Transparency = _G.HideTrees and 1 or 0
+        if plotId then 
+            local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+            if plot then
+                local plants = plot:FindFirstChild("Plants")
+                if plants then
+                    for _, plant in ipairs(plants:GetChildren()) do
+                        -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
+                        for _, child in ipairs(plant:GetChildren()) do
+                            if child.Name ~= "Fruits" and child:IsA("BasePart") then
+                                child.Transparency = _G.HideTrees and 1 or 0
+                            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
+                                for _, desc in ipairs(child:GetDescendants()) do
+                                    if desc:IsA("BasePart") then
+                                        desc.Transparency = _G.HideTrees and 1 or 0
+                                    end
+                                end
                             end
                         end
-                    end
-                end
 
-                -- ---------- Hide/Show Fruits ----------
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                if fruitsFolder then
-                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        for _, part in ipairs(fruit:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.Transparency = _G.HideFruits and 1 or 0
+                        -- ---------- Hide/Show Fruits ----------
+                        local fruitsFolder = plant:FindFirstChild("Fruits")
+                        if fruitsFolder then
+                            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                                for _, part in ipairs(fruit:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        part.Transparency = _G.HideFruits and 1 or 0
+                                    end
+                                end
                             end
                         end
                     end
                 end
             end
         end
-        
+    end
+end)
