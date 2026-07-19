@@ -885,11 +885,11 @@ task.spawn(function()
                     for _, plant in ipairs(plants:GetChildren()) do
                         -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
                         for _, child in ipairs(plant:GetChildren()) do
-                            if child.Name ~= "Fruits" and child:IsA("BasePart") then
+                            if child.Name ~= "Fruits" and child:IsA("") then
                                 child.Transparency = _G.HideTrees and 1 or 0
-                            elseif child.Name ~= "Fruits" and (child:IsA("") or child:IsA("Folder")) then
+                            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
                                 for _, desc in ipairs(child:GetDescendants()) do
-                                    if desc:IsA("BasePart") then
+                                    if desc:IsA("") then
                                         desc.Transparency = _G.HideTrees and 1 or 0
                                     end
                                 end
@@ -901,7 +901,7 @@ task.spawn(function()
                         if fruitsFolder then
                             for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                 for _, part in ipairs(fruit:GetDescendants()) do
-                                    if part:IsA("BasePart") then
+                                    if part:IsA("") then
                                         part.Transparency = _G.HideFruits and 1 or 0
                                     end
                                 end
