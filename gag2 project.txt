@@ -312,7 +312,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoPlant = v end,
 })
 
-Assistant:CreateDropdown({
+FarmTab:CreateDropdown({
     Name = "Seeds to Plant",
     Options = FruitList,
     CurrentOption = {},
@@ -330,7 +330,7 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.AutoBuyPets = v end,
 })
 
-FarmTab:CreateDropdown({
+Assistant:CreateDropdown({
     Name = "Pets Filter",
     Options = PetList,
     CurrentOption = {},
@@ -541,6 +541,55 @@ local function SmartFly(targetCFrame, toggleCheck)
     end
 end
 
+-- HYPER-FAST INSANE HARVEST LOOP
+task.spawn(function()
+    while task.wait(0.05) do -- Evaluates crops 20 times per second
+        if getgenv and getgenv().SECasadaRunningId and getgenv().SECasadaRunningId ~= currentThreadId then
+            break
+        end
+
+        if not Options.AutoHarvest or not Networking then continue end
+        
+        local plotId = LocalPlayer:GetAttribute("PlotId")
+        local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+        local plants = plot and plot:FindFirstChild("Plants")
+        
+        if plants then
+            for _, plant in ipairs(plants:GetChildren()) do
+                local seedName = plant:GetAttribute("SeedName")
+                if seedName and tableContains(Options.HarvestFruits, seedName) then
+                    local mutation = plant:GetAttribute("Mutation")
+                    
+                    if Options.FilterMutations and (not mutation or not tableContains(Options.HarvestMutations, mutation)) then
+                        continue
+                    end
+                    
+                    local harvestPlantId = plant:GetAttribute("PlantId")
+                    if harvestPlantId then
+                        local fruitsFolder = plant:FindFirstChild("Fruits")
+                        if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
+                            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                                local harvestFruitId = fruit:GetAttribute("FruitId")
+                                if harvestFruitId then
+                                    -- Asynchronously fires remote events rapidly bypassing step yield delays
+                                    task.spawn(function()
+                                        Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
+                                    end)
+                                end
+                            end
+                        else
+                            task.spawn(function()
+                                Networking.Garden.CollectFruit:Fire(harvestPlantId, "")
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- GENERAL STANDARD AUTOMATION LOOP
 task.spawn(function()
     while task.wait(1) do
         if getgenv and getgenv().SECasadaRunningId and getgenv().SECasadaRunningId ~= currentThreadId then
@@ -558,7 +607,6 @@ task.spawn(function()
         if plants then
             for _, plant in ipairs(plants:GetChildren()) do
                 local seedName = plant:GetAttribute("SeedName")
-                local mutation = plant:GetAttribute("Mutation")
                 
                 -- Determine specific crop values
                 local evaluatedValue = plant:GetAttribute("Weight") or plant:GetAttribute("SizeMulti") or 1
@@ -618,33 +666,6 @@ task.spawn(function()
                                     Duration = 2,
                                     Image = 4483362458,
                                 })
-                            end
-                        end
-                    end
-                end
-                
-                -- Auto Harvest logic (Threshold logic completely removed)
-                if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
-                    local shouldHarvest = true
-
-                    if Options.FilterMutations then
-                        if not mutation or not tableContains(Options.HarvestMutations, mutation) then
-                            shouldHarvest = false
-                        end
-                    end
-                    
-                    if shouldHarvest then
-                        local harvestPlantId = plant:GetAttribute("PlantId")
-                        if harvestPlantId then
-                            if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
-                                for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                                    local harvestFruitId = fruit:GetAttribute("FruitId")
-                                    if harvestFruitId then
-                                        Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
-                                    end
-                                end
-                            else
-                                Networking.Garden.CollectFruit:Fire(harvestPlantId, "")
                             end
                         end
                     end
