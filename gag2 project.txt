@@ -1,25 +1,8 @@
-
-
-
-
--- loadstring(game:HttpGet('https://raw.githubusercontent.com/SecAsada/Gag2src2/refs/heads/main/gag2%20project.txt'))()
-
-
-
-
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-
--- ============================================================
--- LOAD THE LIBRARY
--- ============================================================
 -- ============================================================
 -- CREATE WINDOW
 -- ============================================================
-
-
-
 local Window = Rayfield:CreateWindow({
     Name = " Sec Asada : Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
@@ -35,10 +18,9 @@ local Window = Rayfield:CreateWindow({
         RememberJoins = true
     },
     KeySystem = false,
-    -- ADD THESE LINES:
-    BackgroundImage = "92122764635655",   -- Change this to your image ID or URL
-    BackgroundTransparency = 0.5,                 -- Optional: 0 = opaque, 1 = fully transparent
-    BackgroundColor = Color3.fromRGB(25, 25, 25)  -- Optional: fallback color behind the image
+    BackgroundImage = "92122764635655",   
+    BackgroundTransparency = 0.5,                 
+    BackgroundColor = Color3.fromRGB(25, 25, 25)  
 })
 
 -- ============================================================
@@ -48,6 +30,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 -- ============================================================
@@ -70,57 +56,40 @@ end)
 -- ============================================================
 -- OPTIONS & LISTS
 -- ============================================================
-local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry ","Sunflower","Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose","Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom","Star Fruit", "Sun Bloom","Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper"  }
-
-
-local MutationList = { "Gold", "Rainbow", "Electric",  "Frozen", "Bloodlit", "Starstruck", "Aurora" }
-
-
+local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry", "Sunflower", "Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose", "Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom", "Star Fruit", "Sun Bloom", "Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper" }
+local MutationList = { "Gold", "Rainbow", "Electric", "Frozen", "Bloodlit", "Starstruck", "Aurora" }
 local GearList = { "Common Watering Can", "Common Sprinkler", "Sign", "Megaphone", "Lantern", "Uncommon Sprinkler", "Rare Sprinkler", "Legendary Sprinkler", "Super Sprinkler", "Trowel", "Speed Mushroom", "Jump Mushroom", "Gnome", "Shrink Mushroom", "Supersize Mushroom", "Invisibility Mushroom", "Teleporter", "Legendary Pet Teleporter", "Mythic Pet Teleporter", "Super Pet Teleporter", "Super Watering Can", "Basic Pot", "Flashbang", "Player Magnet", "Grappling Hook", "Wheelbarrow", "Strawberry Sniper" }
-
-
 local PropList = { "Light Crate", "Arch Crate", "Bench Crate", "Bridge Crate", "Seesaw Crate", "Sign Crate", "Teleporter Pad Crate", "Ladder Crate", "Fence Crate", "Owner Door Crate", "Conveyor Crate", "Spring Crate", "Roleplay Crate", "Bear Trap Crate" }
-
-
-local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon","Turtle","Butterfly" ,"Bald Eagle" ,"Firefly" }
+local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon", "Turtle", "Butterfly", "Bald Eagle", "Firefly" }
 
 local Options = {
     AutoShovel = false,
     ShovelFruits = {},
     ShovelExceptionMulti = "None",
-    
     AutoHarvest = false,
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
-    
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
     BuySeeds = {},
-    
     AutoBuyAllGears = false,
     AutoBuyGears = false,
     BuyGears = {},
-    
     AutoBuyAllProps = false,
     AutoBuyProps = false,
     BuyProps = {},
-    
     AutoPlant = false,
     PlantSeeds = {},
-    
     AutoBuyPets = false,
     BuyPets = {},
-    
     AutoCollectBest = false,
     AutoSell = false,
-    
     AutoEventDrops = false,
     AutoMeteor = false,
     AutoGnome = false,
     AutoWildPet = false,
     AutoSheckle = false,
-    
     WebhookUrl = "",
     WebhookPets = {}
 }
@@ -178,7 +147,7 @@ MainTab:CreateToggle({
 })
 
 if not _G.SecreAsada_IJConn then
-    _G.SecreAsada_IJConn = game:GetService("UserInputService").JumpRequest:Connect(function()
+    _G.SecreAsada_IJConn = UserInputService.JumpRequest:Connect(function()
         if _G.SecreAsada_InfJump then
             local c = LocalPlayer.Character
             if c and c:FindFirstChild("Humanoid") then
@@ -201,7 +170,7 @@ MainTab:CreateButton({
 MainTab:CreateButton({
     Name = "Rejoin Game",
     Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+        TeleportService:Teleport(game.PlaceId, LocalPlayer)
     end,
 })
 
@@ -462,7 +431,7 @@ VisualsTab:CreateToggle({
     CurrentValue = false,
     Flag = "FullbrightToggle",
     Callback = function(on)
-        game:GetService("Lighting").Brightness = on and 10 or 1
+        Lighting.Brightness = on and 10 or 1
     end,
 })
 
@@ -477,12 +446,6 @@ VisualsTab:CreateSlider({
     end,
 })
 
-
-
-
--- ============================================================
--- VISUALS TAB (add this after the existing FOV/Fullbright)
--- ============================================================
 VisualsTab:CreateSection("Fruit Visibility & Harvest Control")
 
 _G.HideFruits = false
@@ -504,8 +467,6 @@ VisualsTab:CreateToggle({
         _G.DisableHarvestButton = on
     end,
 })
-
-
 
 -- ============================================================
 -- AUTOMATION LOOPS & MECHANICS
@@ -550,7 +511,7 @@ local function SmartFly(targetCFrame, toggleCheck)
         
         root.Anchored = true
         local tweenInfo = TweenInfo.new(burstTime, Enum.EasingStyle.Linear)
-        local tween = game:GetService("TweenService"):Create(root, tweenInfo, {CFrame = CFrame.new(nextPos) * targetCFrame.Rotation})
+        local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(nextPos) * targetCFrame.Rotation})
         tween:Play()
         tween.Completed:Wait()
         
@@ -621,22 +582,12 @@ task.spawn(function()
                             if corePartName and corePartName:match(" Seed$") then
                                 corePartName = corePartName:gsub(" Seed$", "")
                             end
-
                             if sizeMulti >= limitMulti then
                                 shouldShovel = false
                             end
 
                             if not plant:FindFirstChild("Fruits") or #plant.Fruits:GetChildren() == 0 then
                                 shouldShovel = false
-                            end
-                            
-                            if shouldShovel then
-                                Rayfield:Notify({
-                                    Title = "Auto Shovel Loop",
-                                    Content = string.format("Shoveled %s (%.2fx multi, Target limit: %s)", tostring(corePartName), sizeMulti, tostring(Options.ShovelExceptionMulti)),
-                                    Duration = 3,
-                                    Image = 4483362458,
-                                })
                             end
                         end
                     end
@@ -663,13 +614,20 @@ task.spawn(function()
                             if shovel then
                                 local shovelName = shovel:GetAttribute("Shovel") or shovel.Name
                                 local fruitsFolder = plant:FindFirstChild("Fruits")
-                                if fruitsFolder then
+                                if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                         Networking.Shovel.UseShovel:Fire(plant.Name, fruit.Name, shovelName, shovel)
                                     end
                                 else
                                     Networking.Shovel.UseShovel:Fire(plant.Name, "", shovelName, shovel)
                                 end
+                                
+                                Rayfield:Notify({
+                                    Title = "Auto Shovel Loop",
+                                    Content = string.format("Shoveled %s", tostring(plant.Name)),
+                                    Duration = 2,
+                                    Image = 4483362458,
+                                })
                             end
                         end
                     end
@@ -702,7 +660,8 @@ task.spawn(function()
                 end
             end
         end
-           -- Auto Plant Seeds
+        
+        -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
             local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
@@ -740,23 +699,41 @@ task.spawn(function()
             end
         end
         
-        -- Auto Shop Buyers
+        -- Auto Shop Buyers (with tiny wait intervals to avoid remote kicks)
         if Options.AutoBuyAllSeeds then
-            for _, itemName in ipairs(FruitList) do Networking.SeedShop.PurchaseSeed:Fire(itemName) end
+            for _, itemName in ipairs(FruitList) do 
+                Networking.SeedShop.PurchaseSeed:Fire(itemName) 
+                task.wait(0.05)
+            end
         elseif Options.AutoBuySeeds and Options.BuySeeds then
-            for _, itemName in ipairs(Options.BuySeeds) do Networking.SeedShop.PurchaseSeed:Fire(itemName) end
+            for _, itemName in ipairs(Options.BuySeeds) do 
+                Networking.SeedShop.PurchaseSeed:Fire(itemName) 
+                task.wait(0.05)
+            end
         end
         
         if Options.AutoBuyAllGears then
-            for _, itemName in ipairs(GearList) do Networking.GearShop.PurchaseGear:Fire(itemName) end
+            for _, itemName in ipairs(GearList) do 
+                Networking.GearShop.PurchaseGear:Fire(itemName) 
+                task.wait(0.05)
+            end
         elseif Options.AutoBuyGears and Options.BuyGears then
-            for _, itemName in ipairs(Options.BuyGears) do Networking.GearShop.PurchaseGear:Fire(itemName) end
+            for _, itemName in ipairs(Options.BuyGears) do 
+                Networking.GearShop.PurchaseGear:Fire(itemName) 
+                task.wait(0.05)
+            end
         end
         
         if Options.AutoBuyAllProps then
-            for _, itemName in ipairs(PropList) do Networking.CrateShop.PurchaseCrate:Fire(itemName) end
+            for _, itemName in ipairs(PropList) do 
+                Networking.CrateShop.PurchaseCrate:Fire(itemName) 
+                task.wait(0.05)
+            end
         elseif Options.AutoBuyProps and Options.BuyProps then
-            for _, itemName in ipairs(Options.BuyProps) do Networking.CrateShop.PurchaseCrate:Fire(itemName) end
+            for _, itemName in ipairs(Options.BuyProps) do 
+                Networking.CrateShop.PurchaseCrate:Fire(itemName) 
+                task.wait(0.05)
+            end
         end
         
         -- Auto Wild Pets Purchaser
@@ -774,10 +751,10 @@ task.spawn(function()
                                 local success = SmartFly(wildPet.RootPart.CFrame, function() return Options.AutoBuyPets end)
                                 if success then
                                     char.HumanoidRootPart.Anchored = false
-                                    task.wait(3)
+                                    task.wait(1.5)
                                     prompt.HoldDuration = 0
                                     fireproximityprompt(prompt)
-                                    task.wait(0.5)
+                                    task.wait(0.3)
                                     fireproximityprompt(prompt)
                                     task.wait(1)
                                     SmartFly(origCFrame, function() return Options.AutoBuyPets end)
@@ -795,7 +772,7 @@ task.spawn(function()
         end
         
         -- Weather Label Interface Controller
-        local wv = game:GetService("ReplicatedStorage"):FindFirstChild("WeatherValues")
+        local wv = ReplicatedStorage:FindFirstChild("WeatherValues")
         if wv then
             local ts = DateTime.now().UnixTimestamp
             local activeWeathers = {}
@@ -857,7 +834,7 @@ task.spawn(function()
                                     task.wait(0.2)
                                     prompt.HoldDuration = 0
                                     fireproximityprompt(prompt)
-                                    task.wait(1)
+                                    task.wait(0.5)
                                     SmartFly(origCFrame, function() return Options.AutoEventDrops end)
                                 end
                                 char.HumanoidRootPart.Anchored = false
@@ -903,14 +880,11 @@ if petsFolder then
     end)
 end  
 
-
-
 -- ============================================================
 -- FRUIT VISIBILITY & HARVEST BUTTON CONTROL LOOP
 -- ============================================================
 task.spawn(function()
     while task.wait(0.5) do
-        -- Exit if thread ID changed (safety)
         if getgenv and getgenv().SECasadaRunningId and getgenv().SECasadaRunningId ~= currentThreadId then
             break
         end
@@ -927,7 +901,6 @@ task.spawn(function()
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                        -- Set transparency of all BaseParts inside the fruit
                         for _, part in ipairs(fruit:GetDescendants()) do
                             if part:IsA("BasePart") then
                                 part.Transparency = _G.HideFruits and 1 or 0
@@ -942,7 +915,6 @@ task.spawn(function()
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if playerGui then
             local harvestButton = nil
-            -- Search for any TextButton that has "harvest" in its Name or Text
             for _, gui in ipairs(playerGui:GetDescendants()) do
                 if gui:IsA("TextButton") and (
                     gui.Name:lower():find("harvest") or
@@ -955,11 +927,10 @@ task.spawn(function()
             if harvestButton then
                 harvestButton.Visible = not _G.DisableHarvestButton
                 harvestButton.Active = not _G.DisableHarvestButton
-                -- For newer Roblox UI, also set Interactable
                 pcall(function()
                     harvestButton.Interactable = not _G.DisableHarvestButton
                 end)
             end
         end
     end
-end) 
+end)
