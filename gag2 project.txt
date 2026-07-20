@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
-        Enabled = false, -- set to true if you want to save settings
+        Enabled = false,
         FolderName = nil,
         FileName = "SEC ASADA GAG2"
     },
@@ -26,72 +26,115 @@ local Window = Rayfield:CreateWindow({
 -- ============================================================
 -- CREATE TAB
 -- ============================================================
-local MainTab = Window:CreateTab("Main", nil) -- nil = no icon
+local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- PLANT VISIBILITY TOGGLE
+-- PLANT HIDING – ROBUST VERSION
 -- ============================================================
-local plantFolder = workspace:FindFirstChild("Plots") -- adjust if folder name differs
 
--- State
 local plantsHidden = false
+local targetTransparency = 1  -- 0 = visible, 1 = fully hidden
 
--- Function to apply visibility to all current plants
-local function setPlantsVisibility(visible)
-    if not plantFolder then return end
-    local transparency = visible and 0 or 1
-    for _, plant in pairs(plantFolder:GetChildren()) do
-        -- Only process if it's a model/part (adjust if plants are instances like Folder)
-        if plant:IsA("Model") or plant:IsA("Part") then
-            for _, descendant in pairs(plant:GetDescendants()) do
-                if descendant:IsA("BasePart") or descendant:IsA("MeshPart") then
-                    descendant.Transparency = transparency
+-- Function to find all plant models/parts
+-- Adjust the filter to match your game's naming.
+local function findAllPlants()
+    local plants = {}
+    -- Look for models or parts whose name contains "Plant", "Seed", "Flower", etc.
+    -- You can change these keywords to match the actual names in game.
+    local keywords = {"Plant", "Seed", "Flower", "Sprout", "Grow"}
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
+            local name = obj.Name:lower()
+            for _, kw in pairs(keywords) do
+                if name:find(kw:lower()) then
+                    table.insert(plants, obj)
+                    break
                 end
             end
         end
     end
+    return plants
 end
 
--- Function to handle new plants added to the folder
-local function onChildAdded(child)
-    -- Wait a tiny bit to let the plant fully load, then apply current visibility
-    task.wait(0.1)
-    if plantsHidden then
-        setPlantsVisibility(false) -- hide new plant
+-- Function to apply transparency to all parts of a plant model
+local function setPlantTransparency(plant, transparency)
+    if plant:IsA("Model") then
+        for _, part in pairs(plant:GetDescendants()) do
+            if part:IsA("BasePart") or part:IsA("MeshPart") then
+                part.Transparency = transparency
+            end
+        end
+    elseif plant:IsA("BasePart") or plant:IsA("MeshPart") then
+        plant.Transparency = transparency
     end
 end
 
--- Connect to folder's ChildAdded event if folder exists
-if plantFolder then
-    plantFolder.ChildAdded:Connect(onChildAdded)
+-- Apply visibility to all current plants
+local function applyVisibility(transparency)
+    local plants = findAllPlants()
+    for _, plant in pairs(plants) do
+        setPlantTransparency(plant, transparency)
+    end
 end
 
--- Create the toggle
+-- Toggle callback
 local toggle = MainTab:CreateToggle({
     Name = "Hide Plants",
-    CurrentValue = false, -- default: not hidden
-    Flag = "HidePlants", -- for saving (if enabled)
+    CurrentValue = false,
+    Flag = "HidePlants",
     Callback = function(value)
         plantsHidden = value
-        setPlantsVisibility(not value) -- true means hide, so visible = false
+        local transparency = value and targetTransparency or 0
+        applyVisibility(transparency)
     end,
 })
 
--- Optional: Button to refresh visibility (e.g., if plants were already hidden before toggle)
-MainTab:CreateButton({
-    Name = "Refresh Visibility",
-    Callback = function()
+-- Slider to adjust transparency level (0 = visible, 1 = invisible)
+MainTab:CreateSlider({
+    Name = "Plant Transparency",
+    Range = {0, 1},
+    Increment = 0.05,
+    Suffix = "Alpha",
+    CurrentValue = 1,
+    Flag = "Transparency",
+    Callback = function(value)
+        targetTransparency = value
         if plantsHidden then
-            setPlantsVisibility(false) -- hide
-        else
-            setPlantsVisibility(true) -- show
+            applyVisibility(value)
         end
     end,
 })
 
+-- Optional button to refresh (useful if plants were added while hidden)
+MainTab:CreateButton({
+    Name = "Refresh Visibility",
+    Callback = function()
+        local transparency = plantsHidden and targetTransparency or 0
+        applyVisibility(transparency)
+    end,
+})
+
 -- ============================================================
--- INITIAL SETUP (apply current toggle state)
+-- AUTO‑HIDE NEW PLANTS
 -- ============================================================
--- By default, toggle is off, so plants are visible.
--- If you want them hidden by default, set CurrentValue = true and call:
--- setPlantsVisibility(false)
+-- Use a DescendantAdded on workspace to catch any new plant that appears.
+-- This is more reliable than watching a specific folder.
+workspace.DescendantAdded:Connect(function(obj)
+    -- Check if the new object is a plant (by name filter)
+    if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
+        local name = obj.Name:lower()
+        local isPlant = false
+        for _, kw in pairs({"plant", "seed", "flower", "sprout", "grow"}) do
+            if name:find(kw) then
+                isPlant = true
+                break
+            end
+        end
+        if isPlant and plantsHidden then
+            task.wait(0.1) -- wait for parts to load
+            setPlantTransparency(obj, targetTransparency)
+        end
+    end
+end)
+
+print("Sec Asada GUI loaded – Plants will be hidden when toggled.")
