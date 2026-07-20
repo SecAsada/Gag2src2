@@ -26,39 +26,106 @@ local Window = Rayfield:CreateWindow({
 -- ============================================================
 -- MAIN TABS & VARIABLES
 -- ============================================================
-local MainTab = Window:CreateTab("Main Features", nil) -- Creates a tab for your features
+local MainTab = Window:CreateTab("Main Features", nil)
 
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local treeAndFruitCache = {}
+local LocalPlayer = Players.LocalPlayer
 
--- Cache trees and fruits once at execution to prevent performance lag
-for _, item in pairs(Workspace:GetDescendants()) do
-    if item:IsA("BasePart") then
-        -- Checks if the item's name contains either "Tree" or "Fruit"
-        if string.find(item.Name, "Tree") or string.find(item.Name, "Fruit") then
-            table.insert(treeAndFruitCache, item)
+-- Global control states matching your logic
+_G.HideTrees = false
+_G.HideFruits = false
+
+-- Helper function to refresh transparency updates on your current plot plants
+local function updatePlotVisuals()
+    local plotId = LocalPlayer:GetAttribute("PlotId")
+    if not plotId then return end
+    
+    local gardens = Workspace:FindFirstChild("Gardens")
+    if not gardens then return end
+    
+    local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
+    if not plot then return end
+    
+    local plants = plot:FindFirstChild("Plants")
+    if not plants then return end
+
+    for _, plant in ipairs(plants:GetChildren()) do
+        -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
+        for _, child in ipairs(plant:GetChildren()) do
+            if child.Name ~= "Fruits" and child:IsA("BasePart") then
+                child.Transparency = _G.HideTrees and 1 or 0
+            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("Folder")) then
+                for _, desc in ipairs(child:GetDescendants()) do
+                    if desc:IsA("BasePart") then
+                        desc.Transparency = _G.HideTrees and 1 or 0
+                    end
+                end
+            end
+        end
+
+        -- ---------- Hide/Show Fruits ----------
+        local fruitsFolder = plant:FindFirstChild("Fruits")
+        if fruitsFolder then
+            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                for _, part in ipairs(fruit:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = _G.HideFruits and 1 or 0
+                    end
+                end
+            end
         end
     end
 end
 
+-- Automatic dynamic monitoring for when new plants grow or load into your plot
+task.spawn(function()
+    while task.wait(1) do
+        local plotId = LocalPlayer:GetAttribute("PlotId")
+        if plotId then
+            local plot = Workspace:FindFirstChild("Gardens") and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+            local plants = plot and plot:FindFirstChild("Plants")
+            if plants then
+                updatePlotVisuals()
+            end
+        end
+    end
+end)
+
 -- ============================================================
 -- UI TOGGLE CONTROLS
 -- ============================================================
-local TreeFruitToggle = MainTab:CreateToggle({
-    Name = "Hide Trees & Fruits",
+
+-- Toggle for Trees
+MainTab:CreateToggle({
+    Name = "Hide Trees / Plant Trunks",
     CurrentValue = false,
-    Flag = "HideTreesFruitsFlag", -- Unique identifier for configuration saving
+    Flag = "HideTreesPlotFlag",
     Callback = function(Value)
-        -- Loops through our combined cache to change transparency
-        for _, obj in pairs(treeAndFruitCache) do
-            if obj and obj.Parent then
-                obj.Transparency = Value and 1 or 0
-            end
-        end
+        _G.HideTrees = Value
+        updatePlotVisuals()
         
         Rayfield:Notify({
             Title = "Visuals Updated",
-            Content = Value and "Trees and fruits are now hidden!" or "Trees and fruits are now visible!",
+            Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+-- Toggle for Fruits
+MainTab:CreateToggle({
+    Name = "Hide Fruits",
+    CurrentValue = false,
+    Flag = "HideFruitsPlotFlag",
+    Callback = function(Value)
+        _G.HideFruits = Value
+        updatePlotVisuals()
+        
+        Rayfield:Notify({
+            Title = "Visuals Updated",
+            Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
             Duration = 2,
             Image = 4483362458,
         })
