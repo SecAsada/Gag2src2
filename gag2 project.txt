@@ -23,83 +23,15 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false,
 })
 
--- ============================================================
--- CREATE TAB
--- ============================================================
-local GardenTab = Window:CreateTab("Garden", 4483362458)
-
--- ============================================================
--- SERVICES & GARDEN FOLDER
--- ============================================================
 local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
 
-local function getGardenFolder()
-    local gardens = Workspace:FindFirstChild("Gardens")
-    if not gardens then return nil end
-    return gardens:FindFirstChild(localPlayer.Name .. "Garden")
-end
-
--- ============================================================
--- TOGGLE: Hide Plants, Fruits & Trees
--- ============================================================
-local HideToggle = GardenTab:CreateToggle({
-    Name = "Hide Plants, Fruits & Trees",
-    CurrentValue = true, -- start hidden
-    Flag = "HideToggle",
-    Callback = function(Value)
-        local folder = getGardenFolder()
-        if not folder then return end
-        for _, item in ipairs(folder:GetDescendants()) do
-            if item:IsA("BasePart") or item:IsA("Model") then
-                if item.Name == "Plant" or item.Name == "Fruit" or item.Name == "Tree" then
-                    item.Transparency = Value and 1 or 0
-                end
+for _, object in ipairs(Workspace:GetDescendants()) do
+    if object:IsA("Model") and (object.Name:match("Tree") or object.Name:match("Fruit")) then
+        for _, part in ipairs(object:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = 1
+                part.CanCollide = false
             end
-        end
-    end,
-})
-
--- ============================================================
--- BUTTON: Instant Grow
--- ============================================================
-GardenTab:CreateButton({
-    Name = "Instant Grow",
-    Callback = function()
-        local folder = getGardenFolder()
-        if not folder then
-            Rayfield:Notify({
-                Title = "Error",
-                Content = "Garden folder not found!",
-                Duration = 3,
-                Image = 4483362458,
-            })
-            return
-        end
-        local grown = 0
-        for _, plot in ipairs(folder:GetChildren()) do
-            local stage = plot:FindFirstChild("GrowthStage")
-            if stage and stage:IsA("NumberValue") then
-                stage.Value = 100
-                grown = grown + 1
-            end
-        end
-        Rayfield:Notify({
-            Title = "Done",
-            Content = "Grew " .. grown .. " plants instantly.",
-            Duration = 2,
-            Image = 4483362458,
-        })
-    end,
-})
-
--- Initial hide (including trees)
-local folder = getGardenFolder()
-if folder then
-    for _, item in ipairs(folder:GetDescendants()) do
-        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plant" or item.Name == "Fruit" or item.Name == "Tree") then
-            item.Transparency = 1
         end
     end
 end
