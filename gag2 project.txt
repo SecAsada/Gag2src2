@@ -24,133 +24,84 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ============================================================
--- MAIN TABS & VARIABLES
+-- CREATE TAB
 -- ============================================================
-local MainTab = Window:CreateTab("Main Features", nil)
+local GardenTab = Window:CreateTab("Garden", 4483362458) -- icon optional, just use a code
 
-local Players = game:GetService("Players")
+-- ============================================================
+-- SERVICES & GARDEN FOLDER
+-- ============================================================
 local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
 
--- States
-_G.HideTrees = false
-_G.HideFruits = false
-
--- Core function to set transparency safely on an object
-local function setElementTransparency(element, isFruit)
-    local targetState = isFruit and _G.HideFruits or _G.HideTrees
-    local transparencyValue = targetState and 1 or 0
-
-    if element:IsA("BasePart") then
-        element.Transparency = transparencyValue
-    end
-    for _, desc in ipairs(element:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            desc.Transparency = transparencyValue
-        end
-    end
+-- Function to safely get the garden folder
+local function getGardenFolder()
+    local gardens = Workspace:FindFirstChild("Gardens")
+    if not gardens then return nil end
+    return gardens:FindFirstChild(localPlayer.Name .. "Garden")
 end
 
--- Process an individual plant model safely
-local function processPlant(plant)
-    if not plant or not plant.Parent then return end
-    
-    for _, child in ipairs(plant:GetChildren()) do
-        if child.Name == "Fruits" then
-            -- Handle existing fruits inside the folder
-            for _, fruit in ipairs(child:GetChildren()) do
-                setElementTransparency(fruit, true)
+-- ============================================================
+-- TOGGLE: Hide / Show Plants & Fruits
+-- ============================================================
+local HideToggle = GardenTab:CreateToggle({
+    Name = "Hide Plants & Fruits",
+    CurrentValue = true, -- start hidden
+    Flag = "HideToggle",
+    Callback = function(Value)
+        local folder = getGardenFolder()
+        if not folder then return end
+        for _, item in ipairs(folder:GetDescendants()) do
+            if item:IsA("BasePart") or item:IsA("Model") then
+                if item.Name == "Plant" or item.Name == "Fruit" then
+                    item.Transparency = Value and 1 or 0
+                end
             end
-            -- Listen for newly growing fruits on this plant
-            child.ChildAdded:Connect(function(newFruit)
-                task.wait() -- Brief delay for object instantiation
-                setElementTransparency(newFruit, true)
-            end)
-        else
-            -- It's part of the plant/tree structure
-            setElementTransparency(child, false)
         end
-    end
-end
-
--- Global refresh function called by UI Toggles
-local function refreshAllVisuals()
-    local plotId = LocalPlayer:GetAttribute("PlotId")
-    if not plotId then return end
-    
-    local plantsFolder = Workspace:FindFirstChild("Gardens") 
-        and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId)) 
-        and Workspace.Gardens["Plot" .. tostring(plotId)]:FindFirstChild("Plants")
-        
-    if plantsFolder then
-        for _, plant in ipairs(plantsFolder:GetChildren()) do
-            processPlant(plant)
-        end
-    end
-end
-
--- Setup listener for your plot dynamically
-task.spawn(function()
-    -- Wait until your plot ID is loaded by the game
-    local plotId = LocalPlayer:GetAttribute("PlotId")
-    while not plotId do
-        task.wait(0.5)
-        plotId = LocalPlayer:GetAttribute("PlotId")
-    end
-    
-    local plotName = "Plot" .. tostring(plotId)
-    local gardens = Workspace:WaitForChild("Gardens", 10)
-    if not gardens then return end
-    local myPlot = gardens:WaitForChild(plotName, 10)
-    if not myPlot then return end
-    local plantsFolder = myPlot:WaitForChild("Plants", 10)
-    
-    if plantsFolder then
-        -- Refresh everything initially
-        refreshAllVisuals()
-        
-        -- Automatically process any brand new plant that gets added/grown
-        plantsFolder.ChildAdded:Connect(function(newPlant)
-            task.wait(0.1) -- Small safe delay for asset rendering
-            processPlant(newPlant)
-        end)
-    end
-end)
+    end,
+})
 
 -- ============================================================
--- UI TOGGLE CONTROLS
+-- BUTTON: Instant Grow
 -- ============================================================
-
--- Toggle for Plants / Trees
-MainTab:CreateToggle({
-    Name = "Hide Plants / Trees",
-    CurrentValue = false,
-    Flag = "HideTreesPlotFlag",
-    Callback = function(Value)
-        _G.HideTrees = Value
-        refreshAllVisuals()
-        
+GardenTab:CreateButton({
+    Name = "Instant Grow",
+    Callback = function()
+        local folder = getGardenFolder()
+        if not folder then
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Garden folder not found!",
+                Duration = 3,
+                Image = 4483362458,
+            })
+            return
+        end
+        local grown = 0
+        for _, plot in ipairs(folder:GetChildren()) do
+            local stage = plot:FindFirstChild("GrowthStage")
+            if stage and stage:IsA("NumberValue") then
+                stage.Value = 100
+                grown = grown + 1
+            end
+        end
         Rayfield:Notify({
-            Title = "Visuals Updated",
-            Content = Value and "Plants/Trees are now hidden!" or "Plants/Trees are now visible!",
-            Duration = 1.5,
+            Title = "Done",
+            Content = "Grew " .. grown .. " plants instantly.",
+            Duration = 2,
+            Image = 4483362458,
         })
     end,
 })
 
--- Toggle for Fruits
-MainTab:CreateToggle({
-    Name = "Hide Fruits",
-    CurrentValue = false,
-    Flag = "HideFruitsPlotFlag",
-    Callback = function(Value)
-        _G.HideFruits = Value
-        refreshAllVisuals()
-        
-        Rayfield:Notify({
-            Title = "Visuals Updated",
-            Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
-            Duration = 1.5,
-        })
-    end,
-})
+-- Initial hide (because toggle starts true, but callback runs only on UI change,
+-- we manually call it once)
+local folder = getGardenFolder()
+if folder then
+    for _, item in ipairs(folder:GetDescendants()) do
+        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plant" or item.Name == "Fruit") then
+            item.Transparency = 1
+        end
+    end
+end
