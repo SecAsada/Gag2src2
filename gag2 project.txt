@@ -1,11 +1,5 @@
--- ============================================================
--- LOAD THE LIBRARY
--- ============================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- ============================================================
--- CREATE WINDOW
--- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = "Sec Asada : Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
@@ -26,160 +20,118 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- AUTO HIDE PLANTS & FRUITS + REMOVE HITBOXES PERMANENTLY
+-- HELPER: Get all plant parts
 -- ============================================================
-
-local hideEnabled = true   -- true = invisible, false = visible
-
--- Process a single model (plant or fruit)
--- ALWAYS destroys white Plastic block hitboxes,
--- then hides/shows remaining parts based on `transparent`.
-local function setModelVisibility(model, transparent)
-    if not model then return end
-
-    for _, obj in ipairs(model:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            -- Permanently remove white block hitboxes (plain Plastic cubes)
-            if obj:IsA("Part") and obj.Shape == Enum.PartType.Block and obj.Material == Enum.Material.Plastic then
-                obj:Destroy()
-            else
-                -- For other parts (meshes, etc.), control visibility & collision
-                if transparent then
-                    obj.Transparency = 1
-                    obj.CanCollide = false
-                    obj.CastShadow = false
-                else
-                    obj.Transparency = 0
-                    obj.CanCollide = true
-                    obj.CastShadow = true
-                end
-            end
+local function getPlants()
+    local plants = {}
+    -- Adjust the search to match your game:
+    -- Option 1: by name
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and v.Name:lower():match("plant") then
+            table.insert(plants, v)
         end
     end
-end
-
--- Get all plants and fruits from every plot
-local function getAllPlantsAndFruits()
-    local items = {}
-    local gardens = workspace:FindFirstChild("Gardens")
-    if not gardens then return items end
-
-    for _, plot in pairs(gardens:GetChildren()) do
-        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
-            -- Check for Plants folder
-            local plantsFolder = plot:FindFirstChild("Plants")
-            if plantsFolder then
-                for _, plant in pairs(plantsFolder:GetChildren()) do
-                    table.insert(items, plant)
-                end
-            end
-            -- Check for Fruits folder
-            local fruitsFolder = plot:FindFirstChild("Fruits")
-            if fruitsFolder then
-                for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    table.insert(items, fruit)
-                end
-            end
-        end
-    end
-    return items
-end
-
--- Apply current hide state to all existing plants and fruits
-local function refreshAll()
-    local items = getAllPlantsAndFruits()
-    for _, item in pairs(items) do
-        setModelVisibility(item, hideEnabled)
-    end
+    -- Option 2: by tag (if the game uses CollectionService)
+    -- for _, v in pairs(game:GetService("CollectionService"):GetTagged("Plant")) do
+    --     table.insert(plants, v)
+    -- end
+    -- Option 3: by class (if all plants are a specific class like "Part")
+    -- (you'll need to specify)
+    return plants
 end
 
 -- ============================================================
--- WATCH FOR NEW PLANTS/FRUITS (auto‑hide + remove hitboxes)
+-- Store original properties for reset
 -- ============================================================
-local function watchForNewItems()
-    local gardens = workspace:FindFirstChild("Gardens")
-    if not gardens then return end
-
-    -- Helper to attach listeners to a specific folder (Plants or Fruits)
-    local function watchFolder(folder)
-        if not folder then return end
-
-        -- Process existing items
-        for _, item in pairs(folder:GetChildren()) do
-            setModelVisibility(item, hideEnabled)
-        end
-
-        -- Listen for new items added later
-        folder.ChildAdded:Connect(function(item)
-            task.wait(0.1)  -- let parts load
-            setModelVisibility(item, hideEnabled)
-        end)
-    end
-
-    -- Watch for new plots
-    gardens.ChildAdded:Connect(function(plot)
-        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
-            -- Watch Plants folder if it exists now or later
-            local plantsFolder = plot:FindFirstChild("Plants")
-            if plantsFolder then
-                watchFolder(plantsFolder)
-            else
-                plot.ChildAdded:Connect(function(child)
-                    if child.Name == "Plants" then
-                        watchFolder(child)
-                    end
-                end)
-            end
-
-            -- Watch Fruits folder similarly
-            local fruitsFolder = plot:FindFirstChild("Fruits")
-            if fruitsFolder then
-                watchFolder(fruitsFolder)
-            else
-                plot.ChildAdded:Connect(function(child)
-                    if child.Name == "Fruits" then
-                        watchFolder(child)
-                    end
-                end)
-            end
-        end
-    end)
-
-    -- Also watch existing plots (already present)
-    for _, plot in pairs(gardens:GetChildren()) do
-        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
-            local plantsFolder = plot:FindFirstChild("Plants")
-            if plantsFolder then watchFolder(plantsFolder) end
-
-            local fruitsFolder = plot:FindFirstChild("Fruits")
-            if fruitsFolder then watchFolder(fruitsFolder) end
-        end
-    end
-end
+local originalProps = {}
 
 -- ============================================================
--- CREATE TOGGLE IN RAYFIELD
+-- Toggle: Hide Plants
 -- ============================================================
-MainTab:CreateToggle({
-    Name = "Auto Hide Plants & Fruits",
-    CurrentValue = hideEnabled,
-    Flag = "HidePlantsFruits",
+local hideToggle = MainTab:CreateToggle({
+    Name = "Hide Plants",
+    CurrentValue = false,
+    Flag = "HidePlants",
     Callback = function(value)
-        hideEnabled = value
-        refreshAll()
-    end,
+        local plants = getPlants()
+        for _, part in ipairs(plants) do
+            if value then
+                -- Save original properties if not already saved
+                if not originalProps[part] then
+                    originalProps[part] = {
+                        Transparency = part.Transparency,
+                        CanCollide = part.CanCollide
+                    }
+                end
+                part.Transparency = 1
+                part.CanCollide = false
+            else
+                -- Restore from saved properties
+                if originalProps[part] then
+                    part.Transparency = originalProps[part].Transparency
+                    part.CanCollide = originalProps[part].CanCollide
+                else
+                    -- Fallback defaults
+                    part.Transparency = 0
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
 })
 
--- Button to manually refresh (in case something slipped through)
+-- ============================================================
+-- Button: Show All Plants (reset to normal)
+-- ============================================================
 MainTab:CreateButton({
-    Name = "Refresh Hide/Show",
+    Name = "Show All Plants (Reset)",
     Callback = function()
-        refreshAll()
-    end,
+        -- Uncheck the toggle so its state matches
+        if hideToggle.CurrentValue then
+            hideToggle:SetValue(false)  -- triggers the callback
+        else
+            -- Directly restore if toggle wasn't on
+            local plants = getPlants()
+            for _, part in ipairs(plants) do
+                if originalProps[part] then
+                    part.Transparency = originalProps[part].Transparency
+                    part.CanCollide = originalProps[part].CanCollide
+                else
+                    part.Transparency = 0
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
 })
 
 -- ============================================================
--- START THE SCRIPT
+-- Button: Remove All Hitboxes (set CanCollide = false)
 -- ============================================================
-refreshAll()
-watchForNewItems()
+MainTab:CreateButton({
+    Name = "Remove All Hitboxes",
+    Callback = function()
+        local plants = getPlants()
+        for _, part in ipairs(plants) do
+            part.CanCollide = false
+        end
+        -- Also update saved properties to keep CanCollide false if hide is toggled later
+        for _, part in ipairs(plants) do
+            if originalProps[part] then
+                originalProps[part].CanCollide = false
+            else
+                originalProps[part] = {
+                    Transparency = part.Transparency,
+                    CanCollide = false
+                }
+            end
+        end
+    end
+})
+
+-- ============================================================
+-- OPTIONAL: Clear saved props on game close (cleanup)
+-- ============================================================
+game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
+    originalProps = {}
+end)
