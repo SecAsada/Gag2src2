@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
-        Enabled = false,  -- Set to true if you want to save settings
+        Enabled = false,
         FolderName = nil,
         FileName = "SEC ASADA GAG2"
     },
@@ -24,54 +24,117 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ============================================================
--- CREATE TAB & TOGGLE
+-- MAIN TAB
 -- ============================================================
-local MainTab = Window:CreateTab("Main", nil)  -- nil = default icon
+local MainTab = Window:CreateTab("Main", nil)
 
--- Cache tree objects for performance
-local treeObjects = {}
-for _, obj in pairs(workspace:GetDescendants()) do
-    if obj.Name:find("Fruits") or obj.ClassName == "MeshPart" then
-        table.insert(treeObjects, obj)
+-- ============================================================
+-- CACHE & TOGGLE LOGIC (Dynamic)
+-- ============================================================
+local plantObjects = {}   -- will store all relevant parts
+local plantsHidden = false
+
+-- Function to scan and update the cache
+local function refreshPlantList()
+    plantObjects = {}
+    -- Look for all descendants in workspace
+    for _, obj in pairs(workspace:GetDescendants()) do
+        -- Check if it's a part (BasePart) and has "Plant" in its name (case-insensitive)
+        if obj:IsA("BasePart") and obj.Name:lower():find("plant") then
+            table.insert(plantObjects, obj)
+        end
+        -- Also include MeshParts specifically if they are not BaseParts (but they are)
+        -- If plants are inside Models, we need to add all parts of that model
+        if obj:IsA("Model") and obj.Name:lower():find("plant") then
+            for _, part in pairs(obj:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    table.insert(plantObjects, part)
+                end
+            end
+        end
     end
+    -- Optional: notify how many were found
+    Rayfield:Notify({
+        Title = "Scan Complete",
+        Content = #plantObjects .. " plant parts found.",
+        Duration = 2,
+    })
 end
 
--- Toggle state
-local treesHidden = false
+-- Call refresh initially
+refreshPlantList()
 
--- Function to update visibility
-local function updateTrees(hide)
-    for _, obj in pairs(treeObjects) do
-        obj.Transparency = hide and 1 or 0
+-- Function to update visibility of all cached parts
+local function updatePlants(hide)
+    for _, part in pairs(plantObjects) do
+        -- Use Transparency (0 = visible, 1 = invisible)
+        part.Transparency = hide and 1 or 0
+        -- Also make them not collide? (optional)
+        -- part.CanCollide = not hide
     end
-    treesHidden = hide
+    plantsHidden = hide
 end
 
--- Create the toggle
+-- ============================================================
+-- CREATE TOGGLE
+-- ============================================================
 MainTab:CreateToggle({
-    Name = "Hide Trees",
+    Name = "Hide Plants",
     CurrentValue = false,
-    Flag = "HideTrees",  -- optional, for saving
+    Flag = "HidePlants",
     Callback = function(Value)
-        updateTrees(Value)
+        updatePlants(Value)
         Rayfield:Notify({
-            Title = "plants",
-            Content = Value and "Hidden" or "Visible",
+            Title = "Plants",
+            Content = Value and "Hidden" : "Visible",
             Duration = 1.5,
         })
     end
 })
 
 -- ============================================================
--- (OPTIONAL) ADD MORE FEATURES
+-- ADD A REFRESH BUTTON (optional but useful)
 -- ============================================================
--- You can add sections, buttons, sliders, etc. below.
--- Example: auto-collect, auto-plant, etc.
+MainTab:CreateButton({
+    Name = "Refresh Plant List",
+    Callback = function()
+        refreshPlantList()
+        -- Re-apply current visibility state to new plants
+        updatePlants(plantsHidden)
+        Rayfield:Notify({
+            Title = "Refreshed",
+            Content = "Plants list updated.",
+            Duration = 1.5,
+        })
+    end
+})
 
 -- ============================================================
--- CLEANUP (optional)
+-- OPTIONAL: AUTO-REFRESH every few seconds (toggle)
 -- ============================================================
--- If you want to reset tree visibility when the script stops, you can use:
--- game:GetService("RunService").Heartbeat:Connect(function()
---     -- not needed
--- end)
+local autoRefresh = false
+local refreshConnection
+
+MainTab:CreateToggle({
+    Name = "Auto-Refresh (every 5s)",
+    CurrentValue = false,
+    Flag = "AutoRefresh",
+    Callback = function(Value)
+        autoRefresh = Value
+        if refreshConnection then refreshConnection:Disconnect() end
+        if autoRefresh then
+            refreshConnection = game:GetService("RunService").Stepped:Connect(function()
+                -- Refresh every ~5 seconds (using a timer)
+                -- Simpler: use a while loop with task.wait in a separate thread
+                -- We'll do it properly:
+                task.spawn(function()
+                    while autoRefresh do
+                        task.wait(5)
+                        refreshPlantList()
+                        updatePlants(plantsHidden)
+                    end
+                end)
+            end)
+        end
+    end
+})
