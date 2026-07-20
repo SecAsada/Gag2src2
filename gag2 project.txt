@@ -1,37 +1,57 @@
--- ============================================================
--- LOAD THE LIBRARY
--- ============================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- ============================================================
--- CREATE WINDOW
--- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = "Sec Asada : Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
-    ConfigurationSaving = {
-        Enabled = false,
-        FolderName = nil,
-        FileName = "SEC ASADA GAG2"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "",
-        RememberJoins = true
-    },
+    ConfigurationSaving = { Enabled = false },
+    Discord = { Enabled = false },
     KeySystem = false,
 })
 
-local Workspace = game:GetService("Workspace")
-
-for _, object in ipairs(Workspace:GetDescendants()) do
-    if object:IsA("Model") and (object.Name:match("Tree") or object.Name:match("Fruit")) then
-        for _, part in ipairs(object:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Transparency = 1
-                part.CanCollide = false
-            end
+local function hideTreeOrFruit(model)
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 1
+            part.CanCollide = false
         end
     end
 end
+
+local function scanAndHide()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and (obj.Name:match("Tree") or obj.Name:match("Fruit")) then
+            hideTreeOrFruit(obj)
+        end
+    end
+end
+
+-- Run once
+scanAndHide()
+
+-- Watch for new models
+workspace.DescendantAdded:Connect(function(child)
+    if child:IsA("Model") and (child.Name:match("Tree") or child.Name:match("Fruit")) then
+        hideTreeOrFruit(child)
+    end
+end)
+
+-- Add a toggle to enable/disable the effect (if you want)
+local MainTab = Window:CreateTab("Main", nil)
+local ToggleSection = MainTab:CreateSection("Visibility")
+
+local isEnabled = true
+MainTab:CreateToggle({
+    Name = "Hide Trees & Fruits",
+    CurrentValue = true,
+    Flag = "HideToggle",
+    Callback = function(value)
+        isEnabled = value
+        if value then
+            scanAndHide()  -- re-apply
+        else
+            -- Optionally restore visibility? That's more complex.
+            -- For now, just stop hiding new ones.
+        end
+    end,
+})
