@@ -53,7 +53,7 @@ local function updatePlotVisuals()
     for _, plant in ipairs(plants:GetChildren()) do
         -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
         for _, child in ipairs(plant:GetChildren()) do
-            if child.Name ~= "Fruits" and child:IsA("BasePart") then
+            if child.Name ~= "Fruits" and child:IsA("") then
                 child.Transparency = _G.HideTrees and 1 or 0
             elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("")) then
                 for _, desc in ipairs(child:GetDescendants()) do
