@@ -33,7 +33,7 @@ local MainTab = Window:CreateTab("Main", nil)
 -- ============================================================
 
 local plantsHidden = false
-local targetTransparency = 1  -- 0 = visible, 1 = fully hidden
+local targetTransparency = 0  -- 0 = visible, 1 = fully hidden
 
 -- Function to find all plant models/parts
 -- Adjust the filter to match your game's naming.
