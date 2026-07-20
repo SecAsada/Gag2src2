@@ -26,17 +26,18 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- AUTO HIDE PLANTS + REMOVE HITBOXES PERMANENTLY
+-- AUTO HIDE PLANTS & FRUITS + REMOVE HITBOXES PERMANENTLY
 -- ============================================================
 
 local hideEnabled = true   -- true = invisible, false = visible
 
--- This function will ALWAYS destroy white Plastic block hitboxes,
--- and then hide/show the remaining parts based on `transparent`.
-local function setPlantVisibility(plant, transparent)
-    if not plant then return end
+-- Process a single model (plant or fruit)
+-- ALWAYS destroys white Plastic block hitboxes,
+-- then hides/shows remaining parts based on `transparent`.
+local function setModelVisibility(model, transparent)
+    if not model then return end
 
-    for _, obj in ipairs(plant:GetDescendants()) do
+    for _, obj in ipairs(model:GetDescendants()) do
         if obj:IsA("BasePart") then
             -- Permanently remove white block hitboxes (plain Plastic cubes)
             if obj:IsA("Part") and obj.Shape == Enum.PartType.Block and obj.Material == Enum.Material.Plastic then
@@ -57,80 +58,101 @@ local function setPlantVisibility(plant, transparent)
     end
 end
 
--- Find every plant in every plot
-local function getAllPlants()
-    local plants = {}
+-- Get all plants and fruits from every plot
+local function getAllPlantsAndFruits()
+    local items = {}
     local gardens = workspace:FindFirstChild("Gardens")
-    if not gardens then return plants end
+    if not gardens then return items end
 
     for _, plot in pairs(gardens:GetChildren()) do
         if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
+            -- Check for Plants folder
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
                 for _, plant in pairs(plantsFolder:GetChildren()) do
-                    table.insert(plants, plant)
+                    table.insert(items, plant)
+                end
+            end
+            -- Check for Fruits folder
+            local fruitsFolder = plot:FindFirstChild("Fruits")
+            if fruitsFolder then
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    table.insert(items, fruit)
                 end
             end
         end
     end
-    return plants
+    return items
 end
 
--- Apply current hide state to all existing plants (hitboxes are always removed)
-local function refreshAllPlants()
-    local plants = getAllPlants()
-    for _, plant in pairs(plants) do
-        setPlantVisibility(plant, hideEnabled)
+-- Apply current hide state to all existing plants and fruits
+local function refreshAll()
+    local items = getAllPlantsAndFruits()
+    for _, item in pairs(items) do
+        setModelVisibility(item, hideEnabled)
     end
 end
 
 -- ============================================================
--- WATCH FOR NEW PLANTS (auto‑hide + remove hitboxes)
+-- WATCH FOR NEW PLANTS/FRUITS (auto‑hide + remove hitboxes)
 -- ============================================================
-local function watchForNewPlants()
+local function watchForNewItems()
     local gardens = workspace:FindFirstChild("Gardens")
     if not gardens then return end
 
-    -- Helper to attach listeners to a Plants folder
-    local function watchPlantsFolder(plantsFolder)
-        if not plantsFolder then return end
+    -- Helper to attach listeners to a specific folder (Plants or Fruits)
+    local function watchFolder(folder)
+        if not folder then return end
 
-        -- Process existing plants
-        for _, plant in pairs(plantsFolder:GetChildren()) do
-            setPlantVisibility(plant, hideEnabled)
+        -- Process existing items
+        for _, item in pairs(folder:GetChildren()) do
+            setModelVisibility(item, hideEnabled)
         end
 
-        -- Listen for new plants added later
-        plantsFolder.ChildAdded:Connect(function(plant)
+        -- Listen for new items added later
+        folder.ChildAdded:Connect(function(item)
             task.wait(0.1)  -- let parts load
-            setPlantVisibility(plant, hideEnabled)
+            setModelVisibility(item, hideEnabled)
         end)
     end
 
     -- Watch for new plots
     gardens.ChildAdded:Connect(function(plot)
         if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
+            -- Watch Plants folder if it exists now or later
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
-                watchPlantsFolder(plantsFolder)
+                watchFolder(plantsFolder)
             else
-                -- If Plants folder isn't there yet, wait for it
                 plot.ChildAdded:Connect(function(child)
                     if child.Name == "Plants" then
-                        watchPlantsFolder(child)
+                        watchFolder(child)
+                    end
+                end)
+            end
+
+            -- Watch Fruits folder similarly
+            local fruitsFolder = plot:FindFirstChild("Fruits")
+            if fruitsFolder then
+                watchFolder(fruitsFolder)
+            else
+                plot.ChildAdded:Connect(function(child)
+                    if child.Name == "Fruits" then
+                        watchFolder(child)
                     end
                 end)
             end
         end
     end)
 
-    -- Also watch existing plots (in case they were already there)
+    -- Also watch existing plots (already present)
     for _, plot in pairs(gardens:GetChildren()) do
         if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
             local plantsFolder = plot:FindFirstChild("Plants")
-            if plantsFolder then
-                watchPlantsFolder(plantsFolder)
-            end
+            if plantsFolder then watchFolder(plantsFolder) end
+
+            local fruitsFolder = plot:FindFirstChild("Fruits")
+            if fruitsFolder then watchFolder(fruitsFolder) end
         end
     end
 end
@@ -139,25 +161,25 @@ end
 -- CREATE TOGGLE IN RAYFIELD
 -- ============================================================
 MainTab:CreateToggle({
-    Name = "Auto Hide Plants",
+    Name = "Auto Hide Plants & Fruits",
     CurrentValue = hideEnabled,
-    Flag = "HidePlants",
+    Flag = "HidePlantsFruits",
     Callback = function(value)
         hideEnabled = value
-        refreshAllPlants()
+        refreshAll()
     end,
 })
 
 -- Button to manually refresh (in case something slipped through)
 MainTab:CreateButton({
-    Name = "Refresh Hide",
+    Name = "Refresh Hide/Show",
     Callback = function()
-        refreshAllPlants()
+        refreshAll()
     end,
 })
 
 -- ============================================================
 -- START THE SCRIPT
 -- ============================================================
-refreshAllPlants()
-watchForNewPlants()
+refreshAll()
+watchForNewItems()
