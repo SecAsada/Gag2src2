@@ -26,24 +26,23 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- AUTO HIDE PLANTS + REMOVE WHITE HITBOXES
+-- AUTO HIDE PLANTS + REMOVE HITBOXES PERMANENTLY
 -- ============================================================
 
-local hideEnabled = true  -- set to true to auto‑hide on load
-local targetTransparency = 1  -- 1 = fully invisible
+local hideEnabled = true   -- true = invisible, false = visible
 
--- Function to handle a single plant model
--- It ALWAYS destroys white block hitboxes, and hides/shows other parts based on `transparent`
+-- This function will ALWAYS destroy white Plastic block hitboxes,
+-- and then hide/show the remaining parts based on `transparent`.
 local function setPlantVisibility(plant, transparent)
     if not plant then return end
 
     for _, obj in ipairs(plant:GetDescendants()) do
         if obj:IsA("BasePart") then
-            -- Permanently destroy white block hitboxes (plain Plastic blocks)
+            -- Permanently remove white block hitboxes (plain Plastic cubes)
             if obj:IsA("Part") and obj.Shape == Enum.PartType.Block and obj.Material == Enum.Material.Plastic then
                 obj:Destroy()
             else
-                -- Control visibility of other parts
+                -- For other parts (meshes, etc.), control visibility & collision
                 if transparent then
                     obj.Transparency = 1
                     obj.CanCollide = false
@@ -92,49 +91,45 @@ local function watchForNewPlants()
     local gardens = workspace:FindFirstChild("Gardens")
     if not gardens then return end
 
-    -- When a new plot is added (e.g., you expand)
+    -- Helper to attach listeners to a Plants folder
+    local function watchPlantsFolder(plantsFolder)
+        if not plantsFolder then return end
+
+        -- Process existing plants
+        for _, plant in pairs(plantsFolder:GetChildren()) do
+            setPlantVisibility(plant, hideEnabled)
+        end
+
+        -- Listen for new plants added later
+        plantsFolder.ChildAdded:Connect(function(plant)
+            task.wait(0.1)  -- let parts load
+            setPlantVisibility(plant, hideEnabled)
+        end)
+    end
+
+    -- Watch for new plots
     gardens.ChildAdded:Connect(function(plot)
         if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
-            plot.ChildAdded:Connect(function(child)
-                if child.Name == "Plants" then
-                    child.ChildAdded:Connect(function(plant)
-                        task.wait(0.1) -- wait for parts to load
-                        setPlantVisibility(plant, hideEnabled)
-                    end)
-                    -- Also hide any plants already inside when the folder appears
-                    for _, plant in pairs(child:GetChildren()) do
-                        setPlantVisibility(plant, hideEnabled)
-                    end
-                end
-            end)
-            -- If the plot already has a Plants folder, watch it now
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
-                plantsFolder.ChildAdded:Connect(function(plant)
-                    task.wait(0.1)
-                    setPlantVisibility(plant, hideEnabled)
+                watchPlantsFolder(plantsFolder)
+            else
+                -- If Plants folder isn't there yet, wait for it
+                plot.ChildAdded:Connect(function(child)
+                    if child.Name == "Plants" then
+                        watchPlantsFolder(child)
+                    end
                 end)
-                -- Hide existing plants in this plot immediately
-                for _, plant in pairs(plantsFolder:GetChildren()) do
-                    setPlantVisibility(plant, hideEnabled)
-                end
             end
         end
     end)
 
-    -- Also handle plants added to already existing plots
+    -- Also watch existing plots (in case they were already there)
     for _, plot in pairs(gardens:GetChildren()) do
         if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
-                plantsFolder.ChildAdded:Connect(function(plant)
-                    task.wait(0.1)
-                    setPlantVisibility(plant, hideEnabled)
-                end)
-                -- Hide existing plants
-                for _, plant in pairs(plantsFolder:GetChildren()) do
-                    setPlantVisibility(plant, hideEnabled)
-                end
+                watchPlantsFolder(plantsFolder)
             end
         end
     end
@@ -153,7 +148,7 @@ MainTab:CreateToggle({
     end,
 })
 
--- Button to manually refresh hiding (useful if some plant escaped)
+-- Button to manually refresh (in case something slipped through)
 MainTab:CreateButton({
     Name = "Refresh Hide",
     Callback = function()
@@ -161,6 +156,8 @@ MainTab:CreateButton({
     end,
 })
 
--- Initial run
+-- ============================================================
+-- START THE SCRIPT
+-- ============================================================
 refreshAllPlants()
 watchForNewPlants()
