@@ -53,7 +53,7 @@ local PlayerGui = player:WaitForChild("PlayerGui")
 local function findAndApply()
     local mainGui = PlayerGui:FindFirstChild("Main")
     if not mainGui then return end
-    local harvestButton = mainGui:FindFirstChild("HarvestButton")
+    local harvestButton = mainGui:FindFirstChild("Harvest")
     if harvestButton then
         applyHarvestButtonState(harvestButton)
     end
@@ -72,7 +72,7 @@ PlayerGui.ChildAdded:Connect(function(child)
                 applyHarvestButtonState(subChild)
             end
         end)
-        local existing = child:FindFirstChild("HarvestButton")
+        local existing = child:FindFirstChild("Harvest")
         if existing then
             applyHarvestButtonState(existing)
         end
@@ -98,7 +98,7 @@ MainTab:CreateToggle({
         harvestEnabled = not Value
         local mainGui = PlayerGui:FindFirstChild("Main")
         if mainGui then
-            local button = mainGui:FindFirstChild("HarvestButton")
+            local button = mainGui:FindFirstChild("Harvest")
             if button then
                 applyHarvestButtonState(button)
             end
