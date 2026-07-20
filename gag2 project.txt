@@ -26,39 +26,29 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- AUTO HIDE PLANTS – WORKS FOR ALL PLOTS
+-- AUTO HIDE PLANTS + REMOVE WHITE HITBOXES
 -- ============================================================
 
 local hideEnabled = true  -- set to true to auto‑hide on load
 local targetTransparency = 1  -- 1 = fully invisible
 
-if transparent
-    and obj:IsA("Part")
-    and obj.Shape == Enum.PartType.Block then
-    obj:Destroy()
-end
-
-
-
--- Function to hide/show all parts of a plant model
+-- Function to handle a single plant model
+-- It ALWAYS destroys white block hitboxes, and hides/shows other parts based on `transparent`
 local function setPlantVisibility(plant, transparent)
     if not plant then return end
 
     for _, obj in ipairs(plant:GetDescendants()) do
         if obj:IsA("BasePart") then
-            if transparent then
-                -- Remove plain white/gray cube parts
-                if obj:IsA("Part")
-                    and obj.Shape == Enum.PartType.Block
-                    and obj.Material == Enum.Material.Plastic then
-                    obj:Destroy()
-                else
+            -- Permanently destroy white block hitboxes (plain Plastic blocks)
+            if obj:IsA("Part") and obj.Shape == Enum.PartType.Block and obj.Material == Enum.Material.Plastic then
+                obj:Destroy()
+            else
+                -- Control visibility of other parts
+                if transparent then
                     obj.Transparency = 1
                     obj.CanCollide = false
                     obj.CastShadow = false
-                end
-            else
-                if obj.Parent then
+                else
                     obj.Transparency = 0
                     obj.CanCollide = true
                     obj.CastShadow = true
@@ -67,12 +57,6 @@ local function setPlantVisibility(plant, transparent)
         end
     end
 end
-
-
-
-
-
-
 
 -- Find every plant in every plot
 local function getAllPlants()
@@ -93,7 +77,7 @@ local function getAllPlants()
     return plants
 end
 
--- Apply current hide state to all existing plants
+-- Apply current hide state to all existing plants (hitboxes are always removed)
 local function refreshAllPlants()
     local plants = getAllPlants()
     for _, plant in pairs(plants) do
@@ -101,9 +85,8 @@ local function refreshAllPlants()
     end
 end
 
-
 -- ============================================================
--- WATCH FOR NEW PLANTS (auto‑hide them too)
+-- WATCH FOR NEW PLANTS (auto‑hide + remove hitboxes)
 -- ============================================================
 local function watchForNewPlants()
     local gardens = workspace:FindFirstChild("Gardens")
@@ -115,14 +98,12 @@ local function watchForNewPlants()
             plot.ChildAdded:Connect(function(child)
                 if child.Name == "Plants" then
                     child.ChildAdded:Connect(function(plant)
-                        if hideEnabled then
-                            task.wait(0.1) -- wait for parts to load
-                            setPlantVisibility(plant, true)
-                        end
+                        task.wait(0.1) -- wait for parts to load
+                        setPlantVisibility(plant, hideEnabled)
                     end)
                     -- Also hide any plants already inside when the folder appears
                     for _, plant in pairs(child:GetChildren()) do
-                        if hideEnabled then setPlantVisibility(plant, true) end
+                        setPlantVisibility(plant, hideEnabled)
                     end
                 end
             end)
@@ -130,14 +111,12 @@ local function watchForNewPlants()
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
                 plantsFolder.ChildAdded:Connect(function(plant)
-                    if hideEnabled then
-                        task.wait(0.1)
-                        setPlantVisibility(plant, true)
-                    end
+                    task.wait(0.1)
+                    setPlantVisibility(plant, hideEnabled)
                 end)
                 -- Hide existing plants in this plot immediately
                 for _, plant in pairs(plantsFolder:GetChildren()) do
-                    if hideEnabled then setPlantVisibility(plant, true) end
+                    setPlantVisibility(plant, hideEnabled)
                 end
             end
         end
@@ -149,14 +128,12 @@ local function watchForNewPlants()
             local plantsFolder = plot:FindFirstChild("Plants")
             if plantsFolder then
                 plantsFolder.ChildAdded:Connect(function(plant)
-                    if hideEnabled then
-                        task.wait(0.1)
-                        setPlantVisibility(plant, true)
-                    end
+                    task.wait(0.1)
+                    setPlantVisibility(plant, hideEnabled)
                 end)
                 -- Hide existing plants
                 for _, plant in pairs(plantsFolder:GetChildren()) do
-                    if hideEnabled then setPlantVisibility(plant, true) end
+                    setPlantVisibility(plant, hideEnabled)
                 end
             end
         end
@@ -184,7 +161,6 @@ MainTab:CreateButton({
     end,
 })
 
+-- Initial run
 refreshAllPlants()
 watchForNewPlants()
-
-
