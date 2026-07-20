@@ -1,57 +1,131 @@
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = "Sec Asada : Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
-    ConfigurationSaving = { Enabled = false },
-    Discord = { Enabled = false },
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
     KeySystem = false,
 })
 
-local function hideTreeOrFruit(model)
-    for _, part in ipairs(model:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Transparency = 1
-            part.CanCollide = false
+-- ============================================================
+-- CREATE TAB
+-- ============================================================
+local GardenTab = Window:CreateTab("Garden", 4483362458)
+
+-- ============================================================
+-- SERVICES & GARDEN FOLDER
+-- ============================================================
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+local function getGardenFolder()
+    local gardens = Workspace:FindFirstChild("Gardens")
+    if not gardens then return nil end
+    return gardens:FindFirstChild(localPlayer.Name .. "Garden")
+end
+
+-- ============================================================
+-- REFRESH VISIBILITY FUNCTION
+-- ============================================================
+local function refreshVisibility()
+    local folder = getGardenFolder()
+    if not folder then return end
+
+    -- Get current toggle states (defaults if not set)
+    local hidePlantsFruits = Rayfield:GetFlag("HidePlantsFruits")
+    if hidePlantsFruits == nil then hidePlantsFruits = true end
+    local hideTrees = Rayfield:GetFlag("HideTrees")
+    if hideTrees == nil then hideTrees = false end
+
+    for _, item in ipairs(folder:GetDescendants()) do
+        if item:IsA("BasePart") or item:IsA("Model") then
+            local name = item.Name
+            local transparency = 0
+            if (name == "Plant" or name == "Fruit") and hidePlantsFruits then
+                transparency = 1
+            elseif name == "Tree" and hideTrees then
+                transparency = 1
+            end
+            item.Transparency = transparency
         end
     end
 end
 
-local function scanAndHide()
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and (obj.Name:match("Plants") or obj.Name:match("Fruits")) then
-            hideTreeOrFruit(obj)
-        end
-    end
-end
-
--- Run once
-scanAndHide()
-
--- Watch for new models
-workspace.DescendantAdded:Connect(function(child)
-    if child:IsA("Model") and (child.Name:match("Plants") or child.Name:match("Fruits")) then
-        hideTreeOrFruit(child)
-    end
-end)
-
--- Add a toggle to enable/disable the effect (if you want)
-local MainTab = Window:CreateTab("Main", nil)
-local ToggleSection = MainTab:CreateSection("Visibility")
-
-local isEnabled = true
-MainTab:CreateToggle({
-    Name = "Hide Trees & Fruits",
-    CurrentValue = true,
-    Flag = "HideToggle",
-    Callback = function(value)
-        isEnabled = value
-        if value then
-            scanAndHide()  -- re-apply
-        else
-            -- Optionally restore visibility? That's more complex.
-            -- For now, just stop hiding new ones.
-        end
+-- ============================================================
+-- TOGGLE: Hide Plants & Fruits
+-- ============================================================
+GardenTab:CreateToggle({
+    Name = "Hide Plants & Fruits",
+    CurrentValue = true, -- hidden by default
+    Flag = "HidePlantsFruits",
+    Callback = function(Value)
+        refreshVisibility()
     end,
 })
+
+-- ============================================================
+-- TOGGLE: Hide Trees
+-- ============================================================
+GardenTab:CreateToggle({
+    Name = "Hide Trees",
+    CurrentValue = false, -- visible by default
+    Flag = "HideTrees",
+    Callback = function(Value)
+        refreshVisibility()
+    end,
+})
+
+-- ============================================================
+-- BUTTON: Instant Grow
+-- ============================================================
+GardenTab:CreateButton({
+    Name = "Instant Grow",
+    Callback = function()
+        local folder = getGardenFolder()
+        if not folder then
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Garden folder not found!",
+                Duration = 3,
+                Image = 4483362458,
+            })
+            return
+        end
+        local grown = 0
+        for _, plot in ipairs(folder:GetChildren()) do
+            local stage = plot:FindFirstChild("GrowthStage")
+            if stage and stage:IsA("NumberValue") then
+                stage.Value = 100
+                grown = grown + 1
+            end
+        end
+        Rayfield:Notify({
+            Title = "Done",
+            Content = "Grew " .. grown .. " plants instantly.",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+-- ============================================================
+-- APPLY INITIAL HIDE (plants & fruits hidden, trees visible)
+-- ============================================================
+refreshVisibility()
