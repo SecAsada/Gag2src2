@@ -1,76 +1,53 @@
 -- ============================================================
--- LOAD THE LIBRARY
+-- HIDE TREES & FRUITS (NO UI) - KEYBINDS VERSION
 -- ============================================================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
--- ============================================================
--- CREATE WINDOW
--- ============================================================
-local Window = Rayfield:CreateWindow({
-    Name = "Sec Asada : Grow a Garden 2",
-    LoadingTitle = "SEC ASADA",
-    LoadingSubtitle = "@Secre_Dev",
-    ConfigurationSaving = {
-        Enabled = false,
-        FolderName = nil,
-        FileName = "SEC ASADA GAG2"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "",
-        RememberJoins = true
-    },
-    KeySystem = false,
-})
-
--- ============================================================
--- MAIN TABS & VARIABLES
--- ============================================================
-local MainTab = Window:CreateTab("Main Features", nil)
-
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 
--- Global control states matching your logic
-_G.HideTrees = false
-_G.HideFruits = false
+-- Toggle states
+local hideTrees = false
+local hideFruits = false
 
--- Helper function to refresh transparency updates on your current plot plants
-local function updatePlotVisuals()
+-- Function to update visibility on your plot's plants
+local function updatePlot()
     local plotId = LocalPlayer:GetAttribute("PlotId")
     if not plotId then return end
-    
+
     local gardens = Workspace:FindFirstChild("Gardens")
     if not gardens then return end
-    
+
     local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
     if not plot then return end
-    
+
     local plants = plot:FindFirstChild("Plants")
     if not plants then return end
 
     for _, plant in ipairs(plants:GetChildren()) do
-        -- ---------- Hide/Show Trees (Main Trunk/Leaves models) ----------
+        -- ---- Hide/Show Tree Trunk & Leaves (all non-Fruit parts) ----
         for _, child in ipairs(plant:GetChildren()) do
-            if child.Name ~= "Fruits" and child:IsA("BasePart") then
-                child.Transparency = _G.HideTrees and 1 or 0
-            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("")) then
-                for _, desc in ipairs(child:GetDescendants()) do
-                    if desc:IsA("") then
-                        desc.Transparency = _G.HideTrees and 1 or 0
+            if child.Name ~= "Fruits" then
+                -- If it's a BasePart directly
+                if child:IsA("BasePart") then
+                    child.Transparency = hideTrees and 1 or 0
+                end
+                -- If it's a Model or Folder, go through descendants
+                for _, part in ipairs(child:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = hideTrees and 1 or 0
                     end
                 end
             end
         end
 
-        -- ---------- Hide/Show Fruits ----------
+        -- ---- Hide/Show Fruits ----
         local fruitsFolder = plant:FindFirstChild("Fruits")
         if fruitsFolder then
             for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                 for _, part in ipairs(fruit:GetDescendants()) do
                     if part:IsA("BasePart") then
-                        part.Transparency = _G.HideFruits and 1 or 0
+                        part.Transparency = hideFruits and 1 or 0
                     end
                 end
             end
@@ -78,56 +55,25 @@ local function updatePlotVisuals()
     end
 end
 
--- Automatic dynamic monitoring for when new plants grow or load into your plot
+-- Automatic refresh when new plants appear (check every second)
 task.spawn(function()
     while task.wait(1) do
-        local plotId = LocalPlayer:GetAttribute("PlotId")
-        if plotId then
-            local plot = Workspace:FindFirstChild("Gardens") and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
-            local plants = plot and plot:FindFirstChild("Plants")
-            if plants then
-                updatePlotVisuals()
-            end
-        end
+        updatePlot()
     end
 end)
 
--- ============================================================
--- UI TOGGLE CONTROLS
--- ============================================================
+-- Keybind: press G to toggle Trees
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.G then
+        hideTrees = not hideTrees
+        updatePlot()
+        print("Trees hidden:", hideTrees)
+    elseif input.KeyCode == Enum.KeyCode.H then
+        hideFruits = not hideFruits
+        updatePlot()
+        print("Fruits hidden:", hideFruits)
+    end
+end)
 
--- Toggle for Trees
-MainTab:CreateToggle({
-    Name = "Hide Trees / Plant Trunks",
-    CurrentValue = false,
-    Flag = "HideTreesPlotFlag",
-    Callback = function(Value)
-        _G.HideTrees = Value
-        updatePlotVisuals()
-        
-        Rayfield:Notify({
-            Title = "Visuals Updated",
-            Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
-            Duration = 2,
-            Image = 4483362458,
-        })
-    end,
-})
-
--- Toggle for Fruits
-MainTab:CreateToggle({
-    Name = "Hide Fruits",
-    CurrentValue = false,
-    Flag = "HideFruitsPlotFlag",
-    Callback = function(Value)
-        _G.HideFruits = Value
-        updatePlotVisuals()
-        
-        Rayfield:Notify({
-            Title = "Visuals Updated",
-            Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
-            Duration = 2,
-            Image = 4483362458,
-        })
-    end,
-})
+print("Script loaded! Press G to toggle trees, H to toggle fruits.")
