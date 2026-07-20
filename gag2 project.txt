@@ -1,3 +1,28 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name = " Sec Asada : Grow a Garden 2",
+    LoadingTitle = "SEC ASADA",
+    LoadingSubtitle = "@Secre_Dev",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false,
+})
 
 -- Change this to your preferred key
 local ToggleKey = Enum.KeyCode.T 
