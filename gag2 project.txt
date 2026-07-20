@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
-        Enabled = false,
+        Enabled = false,  -- Set to true if you want to save settings
         FolderName = nil,
         FileName = "SEC ASADA GAG2"
     },
@@ -24,115 +24,42 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ============================================================
--- MAIN TAB
+-- CREATE TAB & TOGGLE
 -- ============================================================
-local MainTab = Window:CreateTab("Main", nil)
+local MainTab = Window:CreateTab("Main", nil)  -- nil = default icon
 
--- ============================================================
--- CACHE & TOGGLE LOGIC (Dynamic)
--- ============================================================
-local plantObjects = {}
-local plantsHidden = false
-
--- Function to scan and update the cache
-local function refreshPlantList()
-    plantObjects = {}
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name:lower():find("plant") then
-            table.insert(plantObjects, obj)
-        end
-        if obj:IsA("Model") and obj.Name:lower():find("plant") then
-            for _, part in pairs(obj:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    table.insert(plantObjects, part)
-                end
-            end
+-- Cache environmental objects for performance
+local targetObjects = {}
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj:IsA("BasePart") then -- Ensures the object has a Transparency property
+        local nameLower = obj.Name:lower()
+        -- Checks for Trees, Plants, Fruits, or Berries
+        if nameLower:find("tree") or nameLower:find("plant") or nameLower:find("fruit") or nameLower:find("berry") or obj.ClassName == "MeshPart" then
+            table.insert(targetObjects, obj)
         end
     end
-    Rayfield:Notify({
-        Title = "Scan Complete",
-        Content = #plantObjects .. " plant parts found.",
-        Duration = 2,
-    })
 end
-
--- Call refresh initially
-refreshPlantList()
 
 -- Function to update visibility
-local function updatePlants(hide)
-    for _, part in pairs(plantObjects) do
-        part.Transparency = hide and 1 or 0
+local function updateVisibility(hide)
+    for _, obj in pairs(targetObjects) do
+        if obj and obj.Parent then
+            obj.Transparency = hide and 1 or 0
+        end
     end
-    plantsHidden = hide
 end
 
--- ============================================================
--- CREATE TOGGLE
--- ============================================================
+-- Create the toggle
 MainTab:CreateToggle({
-    Name = "Hide Plants",
+    Name = "Hide Trees, Plants & Fruits",
     CurrentValue = false,
-    Flag = "HidePlants",
+    Flag = "HideEnvironment",  
     Callback = function(Value)
-        updatePlants(Value)
+        updateVisibility(Value)
         Rayfield:Notify({
-            Title = "Plants",
-            Content = Value and "Hidden" or "Visible",   -- ✅ fixed
+            Title = "Environment Cleaner",
+            Content = Value and "Objects Hidden" or "Objects Visible",
             Duration = 1.5,
         })
-    end
-})
-
--- ============================================================
--- REFRESH BUTTON
--- ============================================================
-MainTab:CreateButton({
-    Name = "Refresh Plant List",
-    Callback = function()
-        refreshPlantList()
-        updatePlants(plantsHidden)
-        Rayfield:Notify({
-            Title = "Refreshed",
-            Content = "Plants list updated.",
-            Duration = 1.5,
-        })
-    end
-})
-
--- ============================================================
--- AUTO-REFRESH (fixed)
--- ============================================================
-local autoRefresh = false
-local autoRefreshThread = nil
-
-local function startAutoRefresh()
-    if autoRefreshThread then return end  -- already running
-    autoRefreshThread = task.spawn(function()
-        while autoRefresh do
-            task.wait(5)
-            refreshPlantList()
-            updatePlants(plantsHidden)
-        end
-        autoRefreshThread = nil
-    end)
-end
-
-MainTab:CreateToggle({
-    Name = "Auto-Refresh (every 5s)",
-    CurrentValue = false,
-    Flag = "AutoRefresh",
-    Callback = function(Value)
-        autoRefresh = Value
-        if Value then
-            startAutoRefresh()
-        else
-            -- The loop will stop on its own because autoRefresh becomes false
-            -- but we can also force-kill the thread if needed (optional)
-            if autoRefreshThread then
-                task.cancel(autoRefreshThread)
-                autoRefreshThread = nil
-            end
-        end
     end
 })
