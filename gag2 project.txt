@@ -1,1 +1,31 @@
 
+-- Change this to your preferred key
+local ToggleKey = Enum.KeyCode.T 
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+
+local treesHidden = false
+
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+	if isProcessed then return end
+	
+	if input.KeyCode == ToggleKey then
+		treesHidden = not treesHidden
+		
+		for _, item in pairs(Workspace:GetDescendants()) do
+			-- Adjust "Tree" to match the exact part/model name in the game
+			if item:IsA("BasePart") and string.match(item.Name, "Tree") then
+				if treesHidden then
+					item.Transparency = 1
+				else
+					item.Transparency = 0
+				end
+			end
+		end
+		
+		print("Trees hidden: " .. tostring(treesHidden))
+	end
+end)
