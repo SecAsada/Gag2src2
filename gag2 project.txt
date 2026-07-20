@@ -1,1 +1,97 @@
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name = "Sec Asada : Grow a Garden 2",
+    LoadingTitle = "SEC ASADA",
+    LoadingSubtitle = "@Secre_Dev",
+    ConfigurationSaving = {
+        Enabled = false, -- set to true if you want to save settings
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false,
+})
+
+-- ============================================================
+-- CREATE TAB
+-- ============================================================
+local MainTab = Window:CreateTab("Main", nil) -- nil = no icon
+
+-- ============================================================
+-- PLANT VISIBILITY TOGGLE
+-- ============================================================
+local plantFolder = workspace:FindFirstChild("Plots") -- adjust if folder name differs
+
+-- State
+local plantsHidden = false
+
+-- Function to apply visibility to all current plants
+local function setPlantsVisibility(visible)
+    if not plantFolder then return end
+    local transparency = visible and 0 or 1
+    for _, plant in pairs(plantFolder:GetChildren()) do
+        -- Only process if it's a model/part (adjust if plants are instances like Folder)
+        if plant:IsA("Model") or plant:IsA("Part") then
+            for _, descendant in pairs(plant:GetDescendants()) do
+                if descendant:IsA("BasePart") or descendant:IsA("MeshPart") then
+                    descendant.Transparency = transparency
+                end
+            end
+        end
+    end
+end
+
+-- Function to handle new plants added to the folder
+local function onChildAdded(child)
+    -- Wait a tiny bit to let the plant fully load, then apply current visibility
+    task.wait(0.1)
+    if plantsHidden then
+        setPlantsVisibility(false) -- hide new plant
+    end
+end
+
+-- Connect to folder's ChildAdded event if folder exists
+if plantFolder then
+    plantFolder.ChildAdded:Connect(onChildAdded)
+end
+
+-- Create the toggle
+local toggle = MainTab:CreateToggle({
+    Name = "Hide Plants",
+    CurrentValue = false, -- default: not hidden
+    Flag = "HidePlants", -- for saving (if enabled)
+    Callback = function(value)
+        plantsHidden = value
+        setPlantsVisibility(not value) -- true means hide, so visible = false
+    end,
+})
+
+-- Optional: Button to refresh visibility (e.g., if plants were already hidden before toggle)
+MainTab:CreateButton({
+    Name = "Refresh Visibility",
+    Callback = function()
+        if plantsHidden then
+            setPlantsVisibility(false) -- hide
+        else
+            setPlantsVisibility(true) -- show
+        end
+    end,
+})
+
+-- ============================================================
+-- INITIAL SETUP (apply current toggle state)
+-- ============================================================
+-- By default, toggle is off, so plants are visible.
+-- If you want them hidden by default, set CurrentValue = true and call:
+-- setPlantsVisibility(false)
