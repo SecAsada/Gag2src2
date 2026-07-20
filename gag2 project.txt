@@ -29,33 +29,36 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main Features", nil) -- Creates a tab for your features
 
 local Workspace = game:GetService("Workspace")
-local treeCache = {}
+local treeAndFruitCache = {}
 
--- Cache trees once at execution to prevent performance lag
+-- Cache trees and fruits once at execution to prevent performance lag
 for _, item in pairs(Workspace:GetDescendants()) do
-    if item:IsA("BasePart") and string.find(item.Name, "Tree") then
-        table.insert(treeCache, item)
+    if item:IsA("BasePart") then
+        -- Checks if the item's name contains either "Tree" or "Fruit"
+        if string.find(item.Name, "Tree") or string.find(item.Name, "Fruit") then
+            table.insert(treeAndFruitCache, item)
+        end
     end
 end
 
 -- ============================================================
 -- UI TOGGLE CONTROLS
 -- ============================================================
-local TreeToggle = MainTab:CreateToggle({
-    Name = "Hide Trees",
+local TreeFruitToggle = MainTab:CreateToggle({
+    Name = "Hide Trees & Fruits",
     CurrentValue = false,
-    Flag = "HideTreesFlag", -- Unique identifier for configuration saving
+    Flag = "HideTreesFruitsFlag", -- Unique identifier for configuration saving
     Callback = function(Value)
-        -- Value will be true or false depending on the toggle state
-        for _, tree in pairs(treeCache) do
-            if tree and tree.Parent then
-                tree.Transparency = Value and 1 or 0
+        -- Loops through our combined cache to change transparency
+        for _, obj in pairs(treeAndFruitCache) do
+            if obj and obj.Parent then
+                obj.Transparency = Value and 1 or 0
             end
         end
         
         Rayfield:Notify({
             Title = "Visuals Updated",
-            Content = Value and "Trees are now hidden!" or "Trees are now visible!",
+            Content = Value and "Trees and fruits are now hidden!" or "Trees and fruits are now visible!",
             Duration = 2,
             Image = 4483362458,
         })
