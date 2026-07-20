@@ -1,1 +1,390 @@
 
+-- Ensure the script doesn't execute twice and lag the device
+if game:GetService("CoreGui"):FindFirstChild("Rayfield") then
+    game:GetService("CoreGui")["Rayfield"]:Destroy()
+end
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- ================= SUPER SCANNER FOR MAIL REMOTE =================
+local MailRemote = nil
+local FoundRemotes = {}
+
+local function scanForRemote()
+    FoundRemotes = {}
+    local candidates = {}
+
+    -- List of services to scan (including all common hiding spots)
+    local servicesToScan = {
+        ReplicatedStorage,
+        game:GetService("Workspace"),
+        game:GetService("Players"),
+        game:GetService("ReplicatedFirst"),
+        game:GetService("StarterGui"),
+        game:GetService("StarterPack"),
+        game:GetService("Lighting"),
+        game:GetService("SoundService"),
+        game:GetService("Chat"),
+        game:GetService("ScriptContext"),
+        -- Some devs put remotes in the local player itself
+        LocalPlayer,
+        LocalPlayer:FindFirstChild("PlayerGui"),
+        LocalPlayer:FindFirstChild("Backpack"),
+        LocalPlayer:FindFirstChild("Character"),
+    }
+
+    for _, service in ipairs(servicesToScan) do
+        if service then
+            for _, obj in pairs(service:GetDescendants()) do
+                if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                    local nameLower = string.lower(obj.Name)
+                    -- Keywords: mail, send, gift, item, transfer
+                    if string.find(nameLower, "mail") or 
+                       string.find(nameLower, "send") or 
+                       string.find(nameLower, "gift") or 
+                       string.find(nameLower, "transfer") or
+                       string.find(nameLower, "item") then
+                        table.insert(candidates, obj)
+                    end
+                end
+            end
+        end
+    end
+
+    -- If multiple candidates, pick the most likely (prefer "SendMail" or "MailRemote")
+    if #candidates > 0 then
+        for _, c in ipairs(candidates) do
+            if c.Name == "SendMail" or c.Name == "MailRemote" then
+                FoundRemotes = candidates
+                return c
+            end
+        end
+        FoundRemotes = candidates
+        return candidates[1] -- fallback to first found
+    end
+
+    return nil
+end
+
+-- Initial scan
+MailRemote = scanForRemote()
+-- ===============================================================
+
+-- Full catalog list of GAG2 Seeds
+local Seeds = {
+    "Carrot Seed", "Strawberry Seed", "Blueberry Seed", "Grass Seed", "Daisy Seed", 
+    "Dandelion Seed", "Clover Seed", "Wheat Seed", "Tulip Seed", "Tomato Seed", "Apple Seed",
+    "Bamboo Seed", "Corn Seed", "Cactus Seed", "Pineapple Seed", "Baby Cactus Seed", 
+    "Horned Melon Seed", "Rose Seed", "Orchid Seed", "Crystal Flower Seed", "Golden Apple Seed",
+    "Mushroom Seed", "Green Bean Seed", "Banana Seed", "Grape Seed", "Coconut Seed", 
+    "Mango Seed", "Glow Mushroom Seed", "Void Blossom Seed", "Aurora Seed", "Starlight Seed", "Ember Root Seed",
+    "Dragon Fruit Seed", "Acorn Seed", "Cherry Seed", "Sunflower Seed", "Poison Ivy Seed", 
+    "Phoenix Flower Seed", "Celestial Tree Seed", "Prism Lotus Seed", "Eternal Bloom Seed",
+    "Venus Fly Trap Seed", "Pomegranate Seed", "Poison Apple Seed", "Venom Spitter Seed", "Ghost Pepper Seed",
+    "Cosmic Genesis Seed", "Infinity Garden Seed", "Divine Blossom Seed",
+    "Dragon's Breath Seed", "Moon Bloom Seed", "Sun Bloom Seed", "Hypno Bloom Seed", "Star Fruit Seed"
+}
+
+-- Full catalog list of GAG2 Gears
+local Gears = {
+    "Common Watering Can", "Super Watering Can", "Golden Watering Can", "Frostbite Watering Can",
+    "Common Sprinkler", "Uncommon Sprinkler", "Rare Sprinkler", "Legendary Sprinkler", "Super Sprinkler",
+    "Trowel", "Copper Trowel", "Diamond Trowel", "Iron Shears", "Enchanted Shears", "Rake", "Crowbar", "Basic Pot",
+    "Speed Mushroom", "Jump Mushroom", "Shrink Mushroom", "Supersize Mushroom", "Invisibility Mushroom",
+    "Gnome", "Lantern", "Megaphone", "Flashbang", "Teleporter", "Wheelbarrow", "Player Magnet", 
+    "Strawberry Sniper", "Power Hose", "Freeze Ray", "Rainbow Magic Carpet", "Vine Wrapper", "Grappling Hook"
+}
+
+-- Current State Configurations
+local SelectedCategory = "Seeds"
+local AvailableItems = Seeds
+local SelectedItemName = ""
+local TargetRecipient = ""
+local TotalAmountToSend = 20
+local CustomNote = ""
+local IsSending = false
+local DelayBetweenTickets = 1.5
+
+-- Load Rayfield Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "GAG2 Global Mailer",
+   LoadingTitle = "Loading Mailer Engine...",
+   LoadingSubtitle = "Auto-Remote Detection Enabled",
+   ConfigurationSaving = { Enabled = false },
+   Discord = { Enabled = false },
+   KeySystem = false
+})
+
+-- UI TAB
+local MainTab = Window:CreateTab("Mailer Core", 4483345998)
+
+-- Warn if remote not found on load
+if not MailRemote then
+    Rayfield:Notify({
+       Title = "⚠️ Remote Not Found",
+       Content = "Mailing system not found. Try using 'Rescan Remote' button.",
+       Duration = 8,
+       Image = 4483300124,
+    })
+else
+    Rayfield:Notify({
+       Title = "✅ Remote Found",
+       Content = "Mail remote detected: " .. MailRemote:GetFullName(),
+       Duration = 4,
+       Image = 4483300124,
+    })
+end
+
+-- 1. Input: Recipient Username
+MainTab:CreateInput({
+   Name = "Recipient Username",
+   PlaceholderText = "Type recipient...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      TargetRecipient = Text
+   end,
+})
+
+-- 2. Dropdown: Choose Category (Seeds or Gears)
+local ItemDropdown
+
+MainTab:CreateDropdown({
+   Name = "Item Category",
+   Options = {"Seeds", "Gears"},
+   CurrentOption = "Seeds",
+   MultipleOptions = false,
+   Callback = function(Option)
+      SelectedCategory = Option[1] or Option
+      if SelectedCategory == "Seeds" then
+          AvailableItems = Seeds
+      else
+          AvailableItems = Gears
+      end
+      if ItemDropdown then
+          ItemDropdown:Refresh(AvailableItems, true)
+      end
+   end,
+})
+
+-- 3. Dropdown: Select Item from Category
+ItemDropdown = MainTab:CreateDropdown({
+   Name = "Select Item",
+   Options = AvailableItems,
+   CurrentOption = "",
+   MultipleOptions = false,
+   Callback = function(Option)
+       SelectedItemName = Option[1] or Option
+   end,
+})
+
+-- 4. Search Filter
+MainTab:CreateInput({
+   Name = "Search Items",
+   PlaceholderText = "Type here to filter items...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local query = string.lower(Text)
+      if query == "" then
+          ItemDropdown:Refresh(AvailableItems, true)
+      else
+          local filtered = {}
+          for _, item in ipairs(AvailableItems) do
+              if string.find(string.lower(item), query) then
+                  table.insert(filtered, item)
+              end
+          end
+          ItemDropdown:Refresh(filtered, true)
+      end
+   end,
+})
+
+-- 5. Input: Quantity
+MainTab:CreateInput({
+   Name = "Total Quantity to Send",
+   PlaceholderText = "Default: 20",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      local num = tonumber(Text)
+      if num and num > 0 then
+          TotalAmountToSend = math.floor(num)
+      end
+   end,
+})
+
+-- 6. Input: Custom Note / Message
+MainTab:CreateInput({
+   Name = "Custom Mail Note (Optional)",
+   PlaceholderText = "Type message to include...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      CustomNote = Text
+   end,
+})
+
+-- 7. Slider: Delay between tickets
+MainTab:CreateSlider({
+   Name = "Delay Between Tickets (seconds)",
+   Range = {0.1, 5},
+   Increment = 0.1,
+   Suffix = "s",
+   CurrentValue = 1.5,
+   Callback = function(Value)
+       DelayBetweenTickets = Value
+   end,
+})
+
+-- 8. Button: Rescan Remote (manual)
+MainTab:CreateButton({
+   Name = "🔄 Rescan Remote",
+   Callback = function()
+       MailRemote = scanForRemote()
+       if MailRemote then
+           Rayfield:Notify({
+               Title = "✅ Remote Found",
+               Content = "Mail remote: " .. MailRemote:GetFullName(),
+               Duration = 4,
+               Image = 4483300124,
+           })
+           if #FoundRemotes > 1 then
+               Rayfield:Notify({
+                   Title = "Multiple Remotes",
+                   Content = "Found " .. #FoundRemotes .. " candidates. Using first one.",
+                   Duration = 5,
+                   Image = 4483300124,
+               })
+           end
+       else
+           Rayfield:Notify({
+               Title = "❌ Remote Not Found",
+               Content = "Could not locate any mail remote.",
+               Duration = 5,
+               Image = 4483300124,
+           })
+       end
+   end,
+})
+
+-- Remote Firing Helper Function (handles both RemoteEvent and RemoteFunction)
+local function sendSingleTicket(recipient, itemName, count, message)
+    if not MailRemote then 
+        MailRemote = scanForRemote() 
+    end
+    if not MailRemote then return false, "No remote" end
+
+    local success, err = pcall(function()
+        if MailRemote:IsA("RemoteEvent") then
+            MailRemote:FireServer(recipient, itemName, count, message)
+        elseif MailRemote:IsA("RemoteFunction") then
+            MailRemote:InvokeServer(recipient, itemName, count, message)
+        end
+    end)
+    if not success then
+        return false, err
+    end
+    return true
+end
+
+-- 9. Command Button: SEND MAIL BATCHES
+MainTab:CreateButton({
+   Name = "📨 SEND MAIL BATCHES",
+   Callback = function()
+       if IsSending then
+           Rayfield:Notify({
+              Title = "Blocked",
+              Content = "A mailing sequence is already running!",
+              Duration = 3,
+              Image = 4483300124,
+           })
+           return
+       end
+
+       -- Data Validations
+       if not MailRemote then
+           MailRemote = scanForRemote()
+           if not MailRemote then
+               Rayfield:Notify({
+                  Title = "Error",
+                  Content = "Cannot locate mailing remote! Use 'Rescan Remote'.",
+                  Duration = 5,
+                  Image = 4483300124,
+               })
+               return
+           end
+       end
+
+       if TargetRecipient == "" then
+           Rayfield:Notify({
+              Title = "Missing Recipient",
+              Content = "Please type a recipient username first.",
+              Duration = 4,
+              Image = 4483300124,
+           })
+           return
+       end
+
+       if SelectedItemName == "" then
+           Rayfield:Notify({
+              Title = "Missing Item",
+              Content = "Please select an item or seed from the list.",
+              Duration = 4,
+              Image = 4483300124,
+           })
+           return
+       end
+
+       -- Execute separate thread
+       task.spawn(function()
+           IsSending = true
+           local remainingItems = TotalAmountToSend
+
+           Rayfield:Notify({
+              Title = "Process Begun",
+              Content = string.format("Preparing to send %d %s to %s...", TotalAmountToSend, SelectedItemName, TargetRecipient),
+              Duration = 4,
+              Image = 4483300124,
+           })
+
+           while remainingItems > 0 do
+               local ticketAmount = math.min(remainingItems, 20)
+               local sent, err = sendSingleTicket(TargetRecipient, SelectedItemName, ticketAmount, CustomNote)
+
+               if sent then
+                   remainingItems = remainingItems - ticketAmount
+                   Rayfield:Notify({
+                      Title = "✅ Ticket Sent",
+                      Content = string.format("Mailed %d %s. %d remaining.", ticketAmount, SelectedItemName, remainingItems),
+                      Duration = 1.5,
+                      Image = 4483300124,
+                   })
+               else
+                   Rayfield:Notify({
+                      Title = "❌ Mailing Stopped",
+                      Content = "Failed to communicate: " .. (err or "unknown error"),
+                      Duration = 5,
+                      Image = 4483300124,
+                   })
+                   break
+               end
+
+               if remainingItems > 0 then
+                   task.wait(DelayBetweenTickets)
+               end
+           end
+
+           if remainingItems == 0 then
+               Rayfield:Notify({
+                  Title = "🎉 Complete!",
+                  Content = string.format("All %d %s have been sent!", TotalAmountToSend, SelectedItemName),
+                  Duration = 5,
+                  Image = 4483300124,
+               })
+           end
+
+           IsSending = false
+       end)
+   end,
+})
