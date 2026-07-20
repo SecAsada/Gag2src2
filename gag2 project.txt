@@ -32,27 +32,46 @@ local MainTab = Window:CreateTab("Main", nil)
 local hideEnabled = true  -- set to true to auto‑hide on load
 local targetTransparency = 1  -- 1 = fully invisible
 
+if transparent
+    and obj:IsA("Part")
+    and obj.Shape == Enum.PartType.Block then
+    obj:Destroy()
+end
+
+
+
 -- Function to hide/show all parts of a plant model
 local function setPlantVisibility(plant, transparent)
     if not plant then return end
 
     for _, obj in ipairs(plant:GetDescendants()) do
         if obj:IsA("BasePart") then
-            -- Hide all parts
-            obj.Transparency = transparent and 1 or 0
-            obj.CanCollide = not transparent
-            obj.CastShadow = not transparent
-
-            -- Remove white cube parts
-            if transparent
-                and obj:IsA("Part")
-                and obj.Shape == Enum.PartType.Block
-                and obj.Color == Color3.fromRGB(163, 162, 165) then
-                obj:Destroy()
+            if transparent then
+                -- Remove plain white/gray cube parts
+                if obj:IsA("Part")
+                    and obj.Shape == Enum.PartType.Block
+                    and obj.Material == Enum.Material.Plastic then
+                    obj:Destroy()
+                else
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                    obj.CastShadow = false
+                end
+            else
+                if obj.Parent then
+                    obj.Transparency = 0
+                    obj.CanCollide = true
+                    obj.CastShadow = true
+                end
             end
         end
     end
 end
+
+
+
+
+
 
 
 -- Find every plant in every plot
@@ -82,12 +101,6 @@ local function refreshAllPlants()
     end
 end
 
-
-if transparent
-    and obj:IsA("Part")
-    and obj.Shape == Enum.PartType.Block then
-    obj:Destroy()
-end
 
 -- ============================================================
 -- WATCH FOR NEW PLANTS (auto‑hide them too)
@@ -171,13 +184,7 @@ MainTab:CreateButton({
     end,
 })
 
--- ============================================================
--- START THE AUTO‑HIDE SYSTEM
--- ============================================================
--- Initial hiding
 refreshAllPlants()
+watchForNewPlants()
 
--- Start watching for new plants (only once)
-task.spawn(watchForNewPlants)
 
-print("Sec Asada | Auto‑hide plants is ACTIVE. Toggle off in the GUI if needed.")
