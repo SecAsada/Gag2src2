@@ -1,5 +1,11 @@
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = "Sec Asada : Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
@@ -20,112 +26,33 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- HELPER: Get all plant parts
+-- MAIN SCRIPT LOGIC
 -- ============================================================
-local function getPlants()
-    local plants = {}
-    -- Adjusted to look through workspace for anything containing "plant"
-    for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and string.find(v.Name:lower(), "plant") then
-            table.insert(plants, v)
-        end
+local player = game.Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- Safely get the Main GUI and Harvest Button
+local mainGui = PlayerGui:WaitForChild("Main") 
+local harvestButton = mainGui:WaitForChild("HarvestButton") 
+
+if harvestButton then
+    -- 1. Visually and physically disable the button
+    harvestButton.Active = false
+    harvestButton.AutoButtonColor = false
+    harvestButton.ImageColor3 = Color3.fromRGB(150, 150, 150) -- Grays it out
+    
+    -- 2. Prevent player clicks by sinking the input
+    -- For ImageButtons/TextButtons, setting Visible to false or Active to false usually works, 
+    -- but you can also toggle 'Interactable' if Roblox's UI update is active:
+    if pcall(function() return harvestButton.Interactable end) then
+        harvestButton.Interactable = false
     end
-    return plants
+    
+    -- Note: Standard Luau scripts cannot directly "unbind" original core connections 
+    -- from another local script easily without deleting/cloning the button, like this:
+    --[[
+    local cl = harvestButton:Clone()
+    harvestButton:Destroy()
+    cl.Parent = mainGui
+    --]]
 end
-
--- ============================================================
--- Store original properties for reset
--- ============================================================
-local originalProps = {}
-
--- ============================================================
--- Toggle: Hide Plants
--- ============================================================
-local hideToggle; -- Declared first so it can be referenced inside the script if needed
-hideToggle = MainTab:CreateToggle({
-    Name = "Hide Plants",
-    CurrentValue = false,
-    Flag = "HidePlants",
-    Callback = function(value)
-        local plants = getPlants()
-        for _, part in ipairs(plants) do
-            if value then
-                -- Save original properties if not already saved
-                if not originalProps[part] then
-                    originalProps[part] = {
-                        Transparency = part.Transparency,
-                        CanCollide = part.CanCollide
-                    }
-                end
-                part.Transparency = 1
-                part.CanCollide = false
-            else
-                -- Restore from saved properties
-                if originalProps[part] then
-                    part.Transparency = originalProps[part].Transparency
-                    part.CanCollide = originalProps[part].CanCollide
-                else
-                    -- Fallback defaults
-                    part.Transparency = 0
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-})
-
--- ============================================================
--- Button: Show All Plants (reset to normal)
--- ============================================================
-MainTab:CreateButton({
-    Name = "Show All Plants (Reset)",
-    Callback = function()
-        -- Uncheck the toggle so its state matches
-        if hideToggle.CurrentValue then
-            hideToggle:Set(false) -- Rayfield uses :Set() to change toggle state dynamically
-        else
-            -- Directly restore if toggle wasn't on
-            local plants = getPlants()
-            for _, part in ipairs(plants) do
-                if originalProps[part] then
-                    part.Transparency = originalProps[part].Transparency
-                    part.CanCollide = originalProps[part].CanCollide
-                else
-                    part.Transparency = 0
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-})
-
--- ============================================================
--- Button: Remove All Hitboxes (set CanCollide = false)
--- ============================================================
-MainTab:CreateButton({
-    Name = "Remove All Hitboxes",
-    Callback = function()
-        local plants = getPlants()
-        for _, part in ipairs(plants) do
-            part.CanCollide = false
-        end
-        -- Also update saved properties to keep CanCollide false if hide is toggled later
-        for _, part in ipairs(plants) do
-            if originalProps[part] then
-                originalProps[part].CanCollide = false
-            else
-                originalProps[part] = {
-                    Transparency = part.Transparency,
-                    CanCollide = false
-                }
-            end
-        end
-    end
-})
-
--- ============================================================
--- OPTIONAL: Clear saved props on game close (cleanup)
--- ============================================================
-game:GetService("Players").LocalPlayer.OnTeleport:Connect(function()
-    originalProps = {}
-end)
