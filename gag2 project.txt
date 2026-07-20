@@ -54,7 +54,7 @@ local HideToggle = GardenTab:CreateToggle({
         if not folder then return end
         for _, item in ipairs(folder:GetDescendants()) do
             if item:IsA("BasePart") or item:IsA("Model") then
-                if item.Name == "Plant" or item.Name == "Fruit" then
+                if item.Name == "Plants" or item.Name == "Fruits" then
                     item.Transparency = Value and 1 or 0
                 end
             end
@@ -100,7 +100,7 @@ GardenTab:CreateButton({
 local folder = getGardenFolder()
 if folder then
     for _, item in ipairs(folder:GetDescendants()) do
-        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plant" or item.Name == "Fruit") then
+        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plants" or item.Name == "Fruits") then
             item.Transparency = 1
         end
     end
