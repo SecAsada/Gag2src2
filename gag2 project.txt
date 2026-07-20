@@ -31,20 +31,16 @@ local MainTab = Window:CreateTab("Main", nil)
 -- ============================================================
 -- CACHE & TOGGLE LOGIC (Dynamic)
 -- ============================================================
-local plantObjects = {}   -- will store all relevant parts
+local plantObjects = {}
 local plantsHidden = false
 
 -- Function to scan and update the cache
 local function refreshPlantList()
     plantObjects = {}
-    -- Look for all descendants in workspace
     for _, obj in pairs(workspace:GetDescendants()) do
-        -- Check if it's a part (BasePart) and has "Plant" in its name (case-insensitive)
         if obj:IsA("BasePart") and obj.Name:lower():find("plant") then
             table.insert(plantObjects, obj)
         end
-        -- Also include MeshParts specifically if they are not BaseParts (but they are)
-        -- If plants are inside Models, we need to add all parts of that model
         if obj:IsA("Model") and obj.Name:lower():find("plant") then
             for _, part in pairs(obj:GetDescendants()) do
                 if part:IsA("BasePart") then
@@ -53,7 +49,6 @@ local function refreshPlantList()
             end
         end
     end
-    -- Optional: notify how many were found
     Rayfield:Notify({
         Title = "Scan Complete",
         Content = #plantObjects .. " plant parts found.",
@@ -64,13 +59,10 @@ end
 -- Call refresh initially
 refreshPlantList()
 
--- Function to update visibility of all cached parts
+-- Function to update visibility
 local function updatePlants(hide)
     for _, part in pairs(plantObjects) do
-        -- Use Transparency (0 = visible, 1 = invisible)
         part.Transparency = hide and 1 or 0
-        -- Also make them not collide? (optional)
-        -- part.CanCollide = not hide
     end
     plantsHidden = hide
 end
@@ -86,20 +78,19 @@ MainTab:CreateToggle({
         updatePlants(Value)
         Rayfield:Notify({
             Title = "Plants",
-            Content = Value and "Hidden" : "Visible",
+            Content = Value and "Hidden" or "Visible",   -- ✅ fixed
             Duration = 1.5,
         })
     end
 })
 
 -- ============================================================
--- ADD A REFRESH BUTTON (optional but useful)
+-- REFRESH BUTTON
 -- ============================================================
 MainTab:CreateButton({
     Name = "Refresh Plant List",
     Callback = function()
         refreshPlantList()
-        -- Re-apply current visibility state to new plants
         updatePlants(plantsHidden)
         Rayfield:Notify({
             Title = "Refreshed",
@@ -110,10 +101,22 @@ MainTab:CreateButton({
 })
 
 -- ============================================================
--- OPTIONAL: AUTO-REFRESH every few seconds (toggle)
+-- AUTO-REFRESH (fixed)
 -- ============================================================
 local autoRefresh = false
-local refreshConnection
+local autoRefreshThread = nil
+
+local function startAutoRefresh()
+    if autoRefreshThread then return end  -- already running
+    autoRefreshThread = task.spawn(function()
+        while autoRefresh do
+            task.wait(5)
+            refreshPlantList()
+            updatePlants(plantsHidden)
+        end
+        autoRefreshThread = nil
+    end)
+end
 
 MainTab:CreateToggle({
     Name = "Auto-Refresh (every 5s)",
@@ -121,20 +124,15 @@ MainTab:CreateToggle({
     Flag = "AutoRefresh",
     Callback = function(Value)
         autoRefresh = Value
-        if refreshConnection then refreshConnection:Disconnect() end
-        if autoRefresh then
-            refreshConnection = game:GetService("RunService").Stepped:Connect(function()
-                -- Refresh every ~5 seconds (using a timer)
-                -- Simpler: use a while loop with task.wait in a separate thread
-                -- We'll do it properly:
-                task.spawn(function()
-                    while autoRefresh do
-                        task.wait(5)
-                        refreshPlantList()
-                        updatePlants(plantsHidden)
-                    end
-                end)
-            end)
+        if Value then
+            startAutoRefresh()
+        else
+            -- The loop will stop on its own because autoRefresh becomes false
+            -- but we can also force-kill the thread if needed (optional)
+            if autoRefreshThread then
+                task.cancel(autoRefreshThread)
+                autoRefreshThread = nil
+            end
         end
     end
 })
