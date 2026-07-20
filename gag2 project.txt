@@ -23,32 +23,37 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false,
 })
 
--- ============================================================
--- CREATE TAB
--- ============================================================
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- PLANT HIDING – ROBUST VERSION
+-- AUTO HIDE PLANTS – WORKS FOR ALL PLOTS
 -- ============================================================
 
-local plantsHidden = false
-local targetTransparency = 0  -- 0 = visible, 1 = fully hidden
+local hideEnabled = true  -- set to true to auto‑hide on load
+local targetTransparency = 1  -- 1 = fully invisible
 
--- Function to find all plant models/parts
--- Adjust the filter to match your game's naming.
-local function findAllPlants()
+-- Function to hide/show all parts of a plant model
+local function setPlantVisibility(plant, transparent)
+    if not plant then return end
+    for _, part in pairs(plant:GetDescendants()) do
+        if part:IsA("BasePart") or part:IsA("MeshPart") then
+            part.Transparency = transparent and targetTransparency or 0
+        end
+    end
+end
+
+-- Find every plant in every plot
+local function getAllPlants()
     local plants = {}
-    -- Look for models or parts whose name contains "Plant", "Seed", "Flower", etc.
-    -- You can change these keywords to match the actual names in game.
-    local keywords = {"Plant", "Seed", "Flower", "Sprout", "Grow"}
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
-            local name = obj.Name:lower()
-            for _, kw in pairs(keywords) do
-                if name:find(kw:lower()) then
-                    table.insert(plants, obj)
-                    break
+    local gardens = workspace:FindFirstChild("Gardens")
+    if not gardens then return plants end
+
+    for _, plot in pairs(gardens:GetChildren()) do
+        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
+            local plantsFolder = plot:FindFirstChild("Plants")
+            if plantsFolder then
+                for _, plant in pairs(plantsFolder:GetChildren()) do
+                    table.insert(plants, plant)
                 end
             end
         end
@@ -56,85 +61,103 @@ local function findAllPlants()
     return plants
 end
 
--- Function to apply transparency to all parts of a plant model
-local function setPlantTransparency(plant, transparency)
-    if plant:IsA("Model") then
-        for _, part in pairs(plant:GetDescendants()) do
-            if part:IsA("BasePart") or part:IsA("MeshPart") then
-                part.Transparency = transparency
+-- Apply current hide state to all existing plants
+local function refreshAllPlants()
+    local plants = getAllPlants()
+    for _, plant in pairs(plants) do
+        setPlantVisibility(plant, hideEnabled)
+    end
+end
+
+-- ============================================================
+-- WATCH FOR NEW PLANTS (auto‑hide them too)
+-- ============================================================
+local function watchForNewPlants()
+    local gardens = workspace:FindFirstChild("Gardens")
+    if not gardens then return end
+
+    -- When a new plot is added (e.g., you expand)
+    gardens.ChildAdded:Connect(function(plot)
+        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
+            plot.ChildAdded:Connect(function(child)
+                if child.Name == "Plants" then
+                    child.ChildAdded:Connect(function(plant)
+                        if hideEnabled then
+                            task.wait(0.1) -- wait for parts to load
+                            setPlantVisibility(plant, true)
+                        end
+                    end)
+                    -- Also hide any plants already inside when the folder appears
+                    for _, plant in pairs(child:GetChildren()) do
+                        if hideEnabled then setPlantVisibility(plant, true) end
+                    end
+                end
+            end)
+            -- If the plot already has a Plants folder, watch it now
+            local plantsFolder = plot:FindFirstChild("Plants")
+            if plantsFolder then
+                plantsFolder.ChildAdded:Connect(function(plant)
+                    if hideEnabled then
+                        task.wait(0.1)
+                        setPlantVisibility(plant, true)
+                    end
+                end)
+                -- Hide existing plants in this plot immediately
+                for _, plant in pairs(plantsFolder:GetChildren()) do
+                    if hideEnabled then setPlantVisibility(plant, true) end
+                end
             end
         end
-    elseif plant:IsA("BasePart") or plant:IsA("MeshPart") then
-        plant.Transparency = transparency
+    end)
+
+    -- Also handle plants added to already existing plots
+    for _, plot in pairs(gardens:GetChildren()) do
+        if plot:IsA("Model") and plot.Name:match("^Plot%d+$") then
+            local plantsFolder = plot:FindFirstChild("Plants")
+            if plantsFolder then
+                plantsFolder.ChildAdded:Connect(function(plant)
+                    if hideEnabled then
+                        task.wait(0.1)
+                        setPlantVisibility(plant, true)
+                    end
+                end)
+                -- Hide existing plants
+                for _, plant in pairs(plantsFolder:GetChildren()) do
+                    if hideEnabled then setPlantVisibility(plant, true) end
+                end
+            end
+        end
     end
 end
 
--- Apply visibility to all current plants
-local function applyVisibility(transparency)
-    local plants = findAllPlants()
-    for _, plant in pairs(plants) do
-        setPlantTransparency(plant, transparency)
-    end
-end
-
--- Toggle callback
-local toggle = MainTab:CreateToggle({
-    Name = "Hide Plants",
-    CurrentValue = false,
+-- ============================================================
+-- CREATE TOGGLE IN RAYFIELD
+-- ============================================================
+MainTab:CreateToggle({
+    Name = "Auto Hide Plants",
+    CurrentValue = hideEnabled,
     Flag = "HidePlants",
     Callback = function(value)
-        plantsHidden = value
-        local transparency = value and targetTransparency or 0
-        applyVisibility(transparency)
+        hideEnabled = value
+        refreshAllPlants()
     end,
 })
 
--- Slider to adjust transparency level (0 = visible, 1 = invisible)
-MainTab:CreateSlider({
-    Name = "Plant Transparency",
-    Range = {0, 1},
-    Increment = 0.05,
-    Suffix = "Alpha",
-    CurrentValue = 1,
-    Flag = "Transparency",
-    Callback = function(value)
-        targetTransparency = value
-        if plantsHidden then
-            applyVisibility(value)
-        end
-    end,
-})
-
--- Optional button to refresh (useful if plants were added while hidden)
+-- Button to manually refresh hiding (useful if some plant escaped)
 MainTab:CreateButton({
-    Name = "Refresh Visibility",
+    Name = "Refresh Hide",
     Callback = function()
-        local transparency = plantsHidden and targetTransparency or 0
-        applyVisibility(transparency)
+        refreshAllPlants()
     end,
 })
 
 -- ============================================================
--- AUTO‑HIDE NEW PLANTS
+-- START THE AUTO‑HIDE SYSTEM
 -- ============================================================
--- Use a DescendantAdded on workspace to catch any new plant that appears.
--- This is more reliable than watching a specific folder.
-workspace.DescendantAdded:Connect(function(obj)
-    -- Check if the new object is a plant (by name filter)
-    if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("MeshPart") then
-        local name = obj.Name:lower()
-        local isPlant = false
-        for _, kw in pairs({"plant", "seed", "flower", "sprout", "grow"}) do
-            if name:find(kw) then
-                isPlant = true
-                break
-            end
-        end
-        if isPlant and plantsHidden then
-            task.wait(0.1) -- wait for parts to load
-            setPlantTransparency(obj, targetTransparency)
-        end
-    end
-end)
+-- Initial hiding
+refreshAllPlants()
 
-print("Sec Asada GUI loaded – Plants will be hidden when toggled.")
+-- Start watching for new plants (only once)
+task.spawn(watchForNewPlants)
+
+print("Sec Asada | Auto‑hide plants is ACTIVE. Toggle off in the GUI if needed.")
