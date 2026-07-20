@@ -25,6 +25,7 @@ local MainTab = Window:CreateTab("Main", nil)
 -- STATE VARIABLE
 -- ============================================================
 local harvestEnabled = false   -- false = disabled, true = enabled
+-- Default is DISABLED
 
 -- ============================================================
 -- FUNCTION TO APPLY THE SETTING TO THE BUTTON
@@ -38,7 +39,6 @@ local function applyHarvestButtonState(button)
     else
         button.ImageColor3 = Color3.fromRGB(150, 150, 150) -- gray out
     end
-    -- If Interactable exists, set it
     pcall(function()
         button.Interactable = harvestEnabled
     end)
@@ -65,7 +65,6 @@ findAndApply()
 -- ============================================================
 -- WATCH FOR BUTTON RE-CREATION (e.g. after respawn)
 -- ============================================================
--- Watch for the "Main" GUI being added
 PlayerGui.ChildAdded:Connect(function(child)
     if child.Name == "Main" then
         child.ChildAdded:Connect(function(subChild)
@@ -73,7 +72,6 @@ PlayerGui.ChildAdded:Connect(function(child)
                 applyHarvestButtonState(subChild)
             end
         end)
-        -- Also check if button already exists inside the newly added Main
         local existing = child:FindFirstChild("HarvestButton")
         if existing then
             applyHarvestButtonState(existing)
@@ -81,7 +79,6 @@ PlayerGui.ChildAdded:Connect(function(child)
     end
 end)
 
--- Also if the button is added directly to PlayerGui (unlikely, but safe)
 PlayerGui.ChildAdded:Connect(function(child)
     if child.Name == "HarvestButton" then
         applyHarvestButtonState(child)
@@ -89,15 +86,16 @@ PlayerGui.ChildAdded:Connect(function(child)
 end)
 
 -- ============================================================
--- ADD TOGGLE TO THE UI
+-- ADD TOGGLE (ON = DISABLED, OFF = ENABLED)
 -- ============================================================
 MainTab:CreateToggle({
     Name = "Disable Harvest Button",
-    CurrentValue = false, -- matches harvestEnabled
+    CurrentValue = true,   -- Starts ON → button is disabled
     Flag = "HarvestToggle",
     Callback = function(Value)
-        harvestEnabled = not Value  -- toggle: if Value is true, we disable
-        -- Apply to current button
+        -- Value = true  → disable button
+        -- Value = false → enable button
+        harvestEnabled = not Value
         local mainGui = PlayerGui:FindFirstChild("Main")
         if mainGui then
             local button = mainGui:FindFirstChild("HarvestButton")
@@ -109,10 +107,10 @@ MainTab:CreateToggle({
 })
 
 -- ============================================================
--- NOTIFICATION (optional)
+-- NOTIFICATION
 -- ============================================================
 Rayfield:Notify({
     Title = "Script Loaded",
-    Content = "Toggle 'Disable Harvest Button' to control it.",
+    Content = "Harvest button is DISABLED by default. Toggle to enable.",
     Duration = 3,
 })
