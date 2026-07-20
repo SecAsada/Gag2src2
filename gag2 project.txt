@@ -56,11 +56,15 @@ end)
 -- ============================================================
 local FruitList = { "Carrot", "Strawberry", "Blueberry", "Tulip", "Tomato", "Apple", "Corn", "Bamboo", "Cactus", "Pineapple", "Mushroom", "Green Bean", "Banana", "Grape", "Coconut", "Mango", "Dragon Fruit", "Acorn", "Cherry ","Sunflower","Fire Fern", "Venus Fly Trap", "Pomegranate", "Poison Apple", "Briar Rose","Venom Spitter", "Moon Bloom", "Dragon's Breath", "Hypno Bloom","Star Fruit", "Sun Bloom","Baby Cactus", "Horned Melon", "Glow Mushroom", "Poison Ivy", "Ghost Pepper"  }
 
+
 local MutationList = { "Gold", "Rainbow", "Electric",  "Frozen", "Bloodlit", "Starstruck", "Aurora" }
+
 
 local GearList = { "Common Watering Can", "Common Sprinkler", "Sign", "Megaphone", "Lantern", "Uncommon Sprinkler", "Rare Sprinkler", "Legendary Sprinkler", "Super Sprinkler", "Trowel", "Speed Mushroom", "Jump Mushroom", "Gnome", "Shrink Mushroom", "Supersize Mushroom", "Invisibility Mushroom", "Teleporter", "Legendary Pet Teleporter", "Mythic Pet Teleporter", "Super Pet Teleporter", "Super Watering Can", "Basic Pot", "Flashbang", "Player Magnet", "Grappling Hook", "Wheelbarrow", "Strawberry Sniper" }
 
+
 local PropList = { "Light Crate", "Arch Crate", "Bench Crate", "Bridge Crate", "Seesaw Crate", "Sign Crate", "Teleporter Pad Crate", "Ladder Crate", "Fence Crate", "Owner Door Crate", "Conveyor Crate", "Spring Crate", "Roleplay Crate", "Bear Trap Crate" }
+
 
 local PetList = { "Bunny", "Frog", "Owl", "Monkey", "Robin", "Bee", "Deer", "Unicorn", "GoldenDragonfly", "Raccoon", "Ice Serpent", "Bear", "BlackDragon","Turtle","Butterfly" ,"Bald Eagle" ,"Firefly" }
 
@@ -102,7 +106,9 @@ local Options = {
     AutoSheckle = false,
     
     WebhookUrl = "",
-    WebhookPets = {}
+    WebhookPets = {},
+    
+    HideTreesAndFruits = false, -- NEW
 }
 
 -- ============================================================
@@ -457,44 +463,35 @@ VisualsTab:CreateSlider({
     end,
 })
 
--- ============================================================
--- HIDE TREES (INVISIBLE)
--- ============================================================
-_G.HideTreesEnabled = false
-
-local function isTreePart(part)
-    if not part:IsA("BasePart") then return false end
-    local name = part.Name:lower()
-    local parent = part.Parent
-    if not parent then return false end
-    local parentName = parent.Name:lower()
-    -- check if part name or parent name contains tree/trunk/leaf related keywords
-    return name:find("tree") or parentName:find("tree") or name:find("trunk") or parentName:find("trunk") or name:find("leaf") or parentName:find("leaf") or name:find("branch") or parentName:find("branch")
-end
-
-local function updateTreeTransparency()
-    local hide = _G.HideTreesEnabled
-    for _, part in ipairs(workspace:GetDescendants()) do
-        if isTreePart(part) then
-            part.Transparency = hide and 1 or 0
+-- NEW: Hide Trees & Fruits
+local function getPlantsFolder()
+    local plotId = LocalPlayer:GetAttribute("PlotId")
+    if plotId then
+        local plot = workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+        if plot then
+            return plot:FindFirstChild("Plants")
         end
     end
+    return nil
 end
 
--- listen for new parts being added to workspace
-workspace.DescendantAdded:Connect(function(descendant)
-    if _G.HideTreesEnabled and isTreePart(descendant) then
-        descendant.Transparency = 1
-    end
-end)
-
 VisualsTab:CreateToggle({
-    Name = "Hide Trees (Invisible)",
+    Name = "Hide Trees & Fruits",
     CurrentValue = false,
-    Flag = "HideTreesToggle",
+    Flag = "HideTreesAndFruitsToggle",
     Callback = function(on)
-        _G.HideTreesEnabled = on
-        updateTreeTransparency()
+        Options.HideTreesAndFruits = on
+        -- Apply immediately to all current plants
+        local plantsFolder = getPlantsFolder()
+        if plantsFolder then
+            for _, plant in ipairs(plantsFolder:GetChildren()) do
+                for _, part in ipairs(plant:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = on and 1 or 0
+                    end
+                end
+            end
+        end
     end,
 })
 
@@ -632,7 +629,7 @@ task.spawn(function()
                         end
                     end
                     
-                    if shouldShovel then
+                     if shouldShovel then
                         local char = LocalPlayer.Character
                         if char then
                             local shovel = char:FindFirstChildOfClass("Tool")
@@ -691,9 +688,25 @@ task.spawn(function()
                         end
                     end
                 end
+                
+                -- Hide Trees & Fruits (NEW)
+                if Options.HideTreesAndFruits then
+                    for _, part in ipairs(plant:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Transparency = 1
+                        end
+                    end
+                else
+                    for _, part in ipairs(plant:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Transparency = 0
+                        end
+                    end
+                end
             end
         end
-           -- Auto Plant Seeds
+        
+        -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
             local plot = plotId and workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
