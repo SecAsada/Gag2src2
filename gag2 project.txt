@@ -31,7 +31,7 @@ local MainTab = Window:CreateTab("Main", nil)  -- nil = default icon
 -- Cache tree objects for performance
 local treeObjects = {}
 for _, obj in pairs(workspace:GetDescendants()) do
-    if obj.Name:find("Plants") or obj.ClassName == "MeshPart" then
+    if obj.Name:find("Fruits") or obj.ClassName == "MeshPart" then
         table.insert(treeObjects, obj)
     end
 end
@@ -55,7 +55,7 @@ MainTab:CreateToggle({
     Callback = function(Value)
         updateTrees(Value)
         Rayfield:Notify({
-            Title = "Trees",
+            Title = "plants",
             Content = Value and "Hidden" or "Visible",
             Duration = 1.5,
         })
