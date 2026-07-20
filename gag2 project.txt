@@ -1,79 +1,77 @@
 -- ============================================================
--- HIDE TREES & FRUITS (NO UI) - KEYBINDS VERSION
+-- LOAD THE LIBRARY
 -- ============================================================
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Toggle states
-local hideTrees = false
-local hideFruits = false
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name = "Sec Asada : Grow a Garden 2",
+    LoadingTitle = "SEC ASADA",
+    LoadingSubtitle = "@Secre_Dev",
+    ConfigurationSaving = {
+        Enabled = false,  -- Set to true if you want to save settings
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false,
+})
 
--- Function to update visibility on your plot's plants
-local function updatePlot()
-    local plotId = LocalPlayer:GetAttribute("PlotId")
-    if not plotId then return end
+-- ============================================================
+-- CREATE TAB & TOGGLE
+-- ============================================================
+local MainTab = Window:CreateTab("Main", nil)  -- nil = default icon
 
-    local gardens = Workspace:FindFirstChild("Gardens")
-    if not gardens then return end
-
-    local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
-    if not plot then return end
-
-    local plants = plot:FindFirstChild("Plants")
-    if not plants then return end
-
-    for _, plant in ipairs(plants:GetChildren()) do
-        -- ---- Hide/Show Tree Trunk & Leaves (all non-Fruit parts) ----
-        for _, child in ipairs(plant:GetChildren()) do
-            if child.Name ~= "Fruits" then
-                -- If it's a BasePart directly
-                if child:IsA("BasePart") then
-                    child.Transparency = hideTrees and 1 or 0
-                end
-                -- If it's a Model or Folder, go through descendants
-                for _, part in ipairs(child:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = hideTrees and 1 or 0
-                    end
-                end
-            end
-        end
-
-        -- ---- Hide/Show Fruits ----
-        local fruitsFolder = plant:FindFirstChild("Fruits")
-        if fruitsFolder then
-            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                for _, part in ipairs(fruit:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = hideFruits and 1 or 0
-                    end
-                end
-            end
-        end
+-- Cache tree objects for performance
+local treeObjects = {}
+for _, obj in pairs(workspace:GetDescendants()) do
+    if obj.Name:find("Tree") or obj.ClassName == "MeshPart" then
+        table.insert(treeObjects, obj)
     end
 end
 
--- Automatic refresh when new plants appear (check every second)
-task.spawn(function()
-    while task.wait(1) do
-        updatePlot()
-    end
-end)
+-- Toggle state
+local treesHidden = false
 
--- Keybind: press G to toggle Trees
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.G then
-        hideTrees = not hideTrees
-        updatePlot()
-        print("Trees hidden:", hideTrees)
-    elseif input.KeyCode == Enum.KeyCode.H then
-        hideFruits = not hideFruits
-        updatePlot()
-        print("Fruits hidden:", hideFruits)
+-- Function to update visibility
+local function updateTrees(hide)
+    for _, obj in pairs(treeObjects) do
+        obj.Transparency = hide and 1 or 0
     end
-end)
+    treesHidden = hide
+end
 
-print("Script loaded! Press G to toggle trees, H to toggle fruits.")
+-- Create the toggle
+MainTab:CreateToggle({
+    Name = "Hide Trees",
+    CurrentValue = false,
+    Flag = "HideTrees",  -- optional, for saving
+    Callback = function(Value)
+        updateTrees(Value)
+        Rayfield:Notify({
+            Title = "Trees",
+            Content = Value and "Hidden" or "Visible",
+            Duration = 1.5,
+        })
+    end
+})
+
+-- ============================================================
+-- (OPTIONAL) ADD MORE FEATURES
+-- ============================================================
+-- You can add sections, buttons, sliders, etc. below.
+-- Example: auto-collect, auto-plant, etc.
+
+-- ============================================================
+-- CLEANUP (optional)
+-- ============================================================
+-- If you want to reset tree visibility when the script stops, you can use:
+-- game:GetService("RunService").Heartbeat:Connect(function()
+--     -- not needed
+-- end)
