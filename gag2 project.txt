@@ -11,7 +11,7 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
-        Enabled = false,  -- Set to true if you want to save settings
+        Enabled = false,
         FolderName = nil,
         FileName = "SEC ASADA GAG2"
     },
@@ -24,42 +24,133 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ============================================================
--- CREATE TAB & TOGGLE
+-- MAIN TABS & VARIABLES
 -- ============================================================
-local MainTab = Window:CreateTab("Main", nil)  -- nil = default icon
+local MainTab = Window:CreateTab("Main Features", nil)
 
--- Cache environmental objects for performance
-local targetObjects = {}
-for _, obj in pairs(workspace:GetDescendants()) do
-    if obj:IsA("BasePart") then -- Ensures the object has a Transparency property
-        local nameLower = obj.Name:lower()
-        -- Checks for Trees, Plants, Fruits, or Berries
-        if nameLower:find("tree") or nameLower:find("Plants") or nameLower:find("Fruits") or nameLower:find("berry") or obj.ClassName == "MeshPart" then
-            table.insert(targetObjects, obj)
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- States
+_G.HideTrees = false
+_G.HideFruits = false
+
+-- Core function to set transparency safely on an object
+local function setElementTransparency(element, isFruit)
+    local targetState = isFruit and _G.HideFruits or _G.HideTrees
+    local transparencyValue = targetState and 1 or 0
+
+    if element:IsA("BasePart") then
+        element.Transparency = transparencyValue
+    end
+    for _, desc in ipairs(element:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            desc.Transparency = transparencyValue
         end
     end
 end
 
--- Function to update visibility
-local function updateVisibility(hide)
-    for _, obj in pairs(targetObjects) do
-        if obj and obj.Parent then
-            obj.Transparency = hide and 1 or 0
+-- Process an individual plant model safely
+local function processPlant(plant)
+    if not plant or not plant.Parent then return end
+    
+    for _, child in ipairs(plant:GetChildren()) do
+        if child.Name == "Fruits" then
+            -- Handle existing fruits inside the folder
+            for _, fruit in ipairs(child:GetChildren()) do
+                setElementTransparency(fruit, true)
+            end
+            -- Listen for newly growing fruits on this plant
+            child.ChildAdded:Connect(function(newFruit)
+                task.wait() -- Brief delay for object instantiation
+                setElementTransparency(newFruit, true)
+            end)
+        else
+            -- It's part of the plant/tree structure
+            setElementTransparency(child, false)
         end
     end
 end
 
--- Create the toggle
+-- Global refresh function called by UI Toggles
+local function refreshAllVisuals()
+    local plotId = LocalPlayer:GetAttribute("PlotId")
+    if not plotId then return end
+    
+    local plantsFolder = Workspace:FindFirstChild("Gardens") 
+        and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId)) 
+        and Workspace.Gardens["Plot" .. tostring(plotId)]:FindFirstChild("Plants")
+        
+    if plantsFolder then
+        for _, plant in ipairs(plantsFolder:GetChildren()) do
+            processPlant(plant)
+        end
+    end
+end
+
+-- Setup listener for your plot dynamically
+task.spawn(function()
+    -- Wait until your plot ID is loaded by the game
+    local plotId = LocalPlayer:GetAttribute("PlotId")
+    while not plotId do
+        task.wait(0.5)
+        plotId = LocalPlayer:GetAttribute("PlotId")
+    end
+    
+    local plotName = "Plot" .. tostring(plotId)
+    local gardens = Workspace:WaitForChild("Gardens", 10)
+    if not gardens then return end
+    local myPlot = gardens:WaitForChild(plotName, 10)
+    if not myPlot then return end
+    local plantsFolder = myPlot:WaitForChild("Plants", 10)
+    
+    if plantsFolder then
+        -- Refresh everything initially
+        refreshAllVisuals()
+        
+        -- Automatically process any brand new plant that gets added/grown
+        plantsFolder.ChildAdded:Connect(function(newPlant)
+            task.wait(0.1) -- Small safe delay for asset rendering
+            processPlant(newPlant)
+        end)
+    end
+end)
+
+-- ============================================================
+-- UI TOGGLE CONTROLS
+-- ============================================================
+
+-- Toggle for Plants / Trees
 MainTab:CreateToggle({
-    Name = "Hide Trees, Plants & Fruits",
+    Name = "Hide Plants / Trees",
     CurrentValue = false,
-    Flag = "HideEnvironment",  
+    Flag = "HideTreesPlotFlag",
     Callback = function(Value)
-        updateVisibility(Value)
+        _G.HideTrees = Value
+        refreshAllVisuals()
+        
         Rayfield:Notify({
-            Title = "Environment Cleaner",
-            Content = Value and "Objects Hidden" or "Objects Visible",
+            Title = "Visuals Updated",
+            Content = Value and "Plants/Trees are now hidden!" or "Plants/Trees are now visible!",
             Duration = 1.5,
         })
-    end
+    end,
+})
+
+-- Toggle for Fruits
+MainTab:CreateToggle({
+    Name = "Hide Fruits",
+    CurrentValue = false,
+    Flag = "HideFruitsPlotFlag",
+    Callback = function(Value)
+        _G.HideFruits = Value
+        refreshAllVisuals()
+        
+        Rayfield:Notify({
+            Title = "Visuals Updated",
+            Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
+            Duration = 1.5,
+        })
+    end,
 })
