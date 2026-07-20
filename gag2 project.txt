@@ -698,14 +698,22 @@ task.spawn(function()
                     end
                 else
                     for _, part in ipairs(plant:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.Transparency = 1
-                        end
-                    end
-                end
-            end
+
+
+for _, part in ipairs(model:GetDescendants()) do
+    if part:IsA("BasePart") then
+        if part.Name == "Box" or part.Name == "Cube" then
+            part.Transparency = 1
+            part.CanCollide = false
         end
-        
+    end
+end
+
+
+
+
+
+
         -- Auto Plant Seeds
         if Options.AutoPlant and Options.PlantSeeds and #Options.PlantSeeds > 0 then
             local plotId = LocalPlayer:GetAttribute("PlotId")
