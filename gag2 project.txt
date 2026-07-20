@@ -76,7 +76,7 @@ MailRemote = scanForRemote()
 local Seeds = {
     "Carrot Seed", "Strawberry Seed", "Blueberry Seed", "Grass Seed", "Daisy Seed", 
     "Dandelion Seed", "Clover Seed", "Wheat Seed", "Tulip Seed", "Tomato Seed", "Apple Seed",
-    "Bamboo Seed", "Corn Seed", "Cactus Seed", "Pineapple Seed", "Baby Cactus Seed", 
+    "Bamboo", "Corn Seed", "Cactus Seed", "Pineapple Seed", "Baby Cactus Seed", 
     "Horned Melon Seed", "Rose Seed", "Orchid Seed", "Crystal Flower Seed", "Golden Apple Seed",
     "Mushroom Seed", "Green Bean Seed", "Banana Seed", "Grape Seed", "Coconut Seed", 
     "Mango Seed", "Glow Mushroom Seed", "Void Blossom Seed", "Aurora Seed", "Starlight Seed", "Ember Root Seed",
@@ -111,7 +111,7 @@ local DelayBetweenTickets = 1.5
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "GAG2 Global Mailer",
+   Name = "GAG2 Global Mailer By Sec Asada",
    LoadingTitle = "Loading Mailer Engine...",
    LoadingSubtitle = "Auto-Remote Detection Enabled",
    ConfigurationSaving = { Enabled = false },
