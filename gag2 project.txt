@@ -34,7 +34,7 @@ for _, obj in pairs(workspace:GetDescendants()) do
     if obj:IsA("BasePart") then -- Ensures the object has a Transparency property
         local nameLower = obj.Name:lower()
         -- Checks for Trees, Plants, Fruits, or Berries
-        if nameLower:find("tree") or nameLower:find("plant") or nameLower:find("fruit") or nameLower:find("berry") or obj.ClassName == "MeshPart" then
+        if nameLower:find("tree") or nameLower:find("Plants") or nameLower:find("Fruits") or nameLower:find("berry") or obj.ClassName == "MeshPart" then
             table.insert(targetObjects, obj)
         end
     end
