@@ -20,7 +20,7 @@ end
 
 local function scanAndHide()
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and (obj.Name:match("Tree") or obj.Name:match("Fruit")) then
+        if obj:IsA("Model") and (obj.Name:match("Plants") or obj.Name:match("Fruits")) then
             hideTreeOrFruit(obj)
         end
     end
@@ -31,7 +31,7 @@ scanAndHide()
 
 -- Watch for new models
 workspace.DescendantAdded:Connect(function(child)
-    if child:IsA("Model") and (child.Name:match("Tree") or child.Name:match("Fruit")) then
+    if child:IsA("Model") and (child.Name:match("Plants") or child.Name:match("Fruits")) then
         hideTreeOrFruit(child)
     end
 end)
