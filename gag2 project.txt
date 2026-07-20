@@ -1,10 +1,10 @@
 -- ============================================================
--- LOAD THE LIBRARY
+-- LOAD RAYFIELD
 -- ============================================================
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- ============================================================
--- CREATE WINDOW
+-- CREATE WINDOW & TAB
 -- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = "Sec Asada : Grow a Garden 2",
@@ -12,13 +12,9 @@ local Window = Rayfield:CreateWindow({
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
         Enabled = false,
-        FolderName = nil,
-        FileName = "SEC ASADA GAG2"
     },
     Discord = {
         Enabled = false,
-        Invite = "",
-        RememberJoins = true
     },
     KeySystem = false,
 })
@@ -26,33 +22,97 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", nil)
 
 -- ============================================================
--- MAIN SCRIPT LOGIC
+-- STATE VARIABLE
+-- ============================================================
+local harvestEnabled = false   -- false = disabled, true = enabled
+
+-- ============================================================
+-- FUNCTION TO APPLY THE SETTING TO THE BUTTON
+-- ============================================================
+local function applyHarvestButtonState(button)
+    if not button then return end
+    button.Active = harvestEnabled
+    button.AutoButtonColor = harvestEnabled
+    if harvestEnabled then
+        button.ImageColor3 = Color3.fromRGB(255, 255, 255) -- restore color
+    else
+        button.ImageColor3 = Color3.fromRGB(150, 150, 150) -- gray out
+    end
+    -- If Interactable exists, set it
+    pcall(function()
+        button.Interactable = harvestEnabled
+    end)
+end
+
+-- ============================================================
+-- FIND AND APPLY TO CURRENT BUTTON
 -- ============================================================
 local player = game.Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
--- Safely get the Main GUI and Harvest Button
-local mainGui = PlayerGui:WaitForChild("Main") 
-local harvestButton = mainGui:WaitForChild("HarvestButton") 
-
-if harvestButton then
-    -- 1. Visually and physically disable the button
-    harvestButton.Active = false
-    harvestButton.AutoButtonColor = false
-    harvestButton.ImageColor3 = Color3.fromRGB(150, 150, 150) -- Grays it out
-    
-    -- 2. Prevent player clicks by sinking the input
-    -- For ImageButtons/TextButtons, setting Visible to false or Active to false usually works, 
-    -- but you can also toggle 'Interactable' if Roblox's UI update is active:
-    if pcall(function() return harvestButton.Interactable end) then
-        harvestButton.Interactable = false
+local function findAndApply()
+    local mainGui = PlayerGui:FindFirstChild("Main")
+    if not mainGui then return end
+    local harvestButton = mainGui:FindFirstChild("HarvestButton")
+    if harvestButton then
+        applyHarvestButtonState(harvestButton)
     end
-    
-    -- Note: Standard Luau scripts cannot directly "unbind" original core connections 
-    -- from another local script easily without deleting/cloning the button, like this:
-    --[[
-    local cl = harvestButton:Clone()
-    harvestButton:Destroy()
-    cl.Parent = mainGui
-    --]]
 end
+
+-- Apply immediately if it exists
+findAndApply()
+
+-- ============================================================
+-- WATCH FOR BUTTON RE-CREATION (e.g. after respawn)
+-- ============================================================
+-- Watch for the "Main" GUI being added
+PlayerGui.ChildAdded:Connect(function(child)
+    if child.Name == "Main" then
+        child.ChildAdded:Connect(function(subChild)
+            if subChild.Name == "HarvestButton" then
+                applyHarvestButtonState(subChild)
+            end
+        end)
+        -- Also check if button already exists inside the newly added Main
+        local existing = child:FindFirstChild("HarvestButton")
+        if existing then
+            applyHarvestButtonState(existing)
+        end
+    end
+end)
+
+-- Also if the button is added directly to PlayerGui (unlikely, but safe)
+PlayerGui.ChildAdded:Connect(function(child)
+    if child.Name == "HarvestButton" then
+        applyHarvestButtonState(child)
+    end
+end)
+
+-- ============================================================
+-- ADD TOGGLE TO THE UI
+-- ============================================================
+MainTab:CreateToggle({
+    Name = "Disable Harvest Button",
+    CurrentValue = false, -- matches harvestEnabled
+    Flag = "HarvestToggle",
+    Callback = function(Value)
+        harvestEnabled = not Value  -- toggle: if Value is true, we disable
+        -- Apply to current button
+        local mainGui = PlayerGui:FindFirstChild("Main")
+        if mainGui then
+            local button = mainGui:FindFirstChild("HarvestButton")
+            if button then
+                applyHarvestButtonState(button)
+            end
+        end
+    end
+})
+
+-- ============================================================
+-- NOTIFICATION (optional)
+-- ============================================================
+Rayfield:Notify({
+    Title = "Script Loaded",
+    Content = "Toggle 'Disable Harvest Button' to control it.",
+    Duration = 3,
+})
