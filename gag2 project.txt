@@ -24,19 +24,12 @@ local MainTab = Window:CreateTab("Main", nil)
 -- ============================================================
 local function getPlants()
     local plants = {}
-    -- Adjust the search to match your game:
-    -- Option 1: by name
+    -- Adjusted to look through workspace for anything containing "plant"
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") and v.Name:lower():match("plant") then
+        if v:IsA("BasePart") and string.find(v.Name:lower(), "plant") then
             table.insert(plants, v)
         end
     end
-    -- Option 2: by tag (if the game uses CollectionService)
-    -- for _, v in pairs(game:GetService("CollectionService"):GetTagged("Plant")) do
-    --     table.insert(plants, v)
-    -- end
-    -- Option 3: by class (if all plants are a specific class like "Part")
-    -- (you'll need to specify)
     return plants
 end
 
@@ -48,7 +41,8 @@ local originalProps = {}
 -- ============================================================
 -- Toggle: Hide Plants
 -- ============================================================
-local hideToggle = MainTab:CreateToggle({
+local hideToggle; -- Declared first so it can be referenced inside the script if needed
+hideToggle = MainTab:CreateToggle({
     Name = "Hide Plants",
     CurrentValue = false,
     Flag = "HidePlants",
@@ -88,7 +82,7 @@ MainTab:CreateButton({
     Callback = function()
         -- Uncheck the toggle so its state matches
         if hideToggle.CurrentValue then
-            hideToggle:SetValue(false)  -- triggers the callback
+            hideToggle:Set(false) -- Rayfield uses :Set() to change toggle state dynamically
         else
             -- Directly restore if toggle wasn't on
             local plants = getPlants()
