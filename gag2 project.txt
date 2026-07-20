@@ -26,7 +26,7 @@ local Window = Rayfield:CreateWindow({
 -- ============================================================
 -- CREATE TAB
 -- ============================================================
-local GardenTab = Window:CreateTab("Garden", 4483362458) -- icon optional, just use a code
+local GardenTab = Window:CreateTab("Garden", 4483362458)
 
 -- ============================================================
 -- SERVICES & GARDEN FOLDER
@@ -35,7 +35,6 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 
--- Function to safely get the garden folder
 local function getGardenFolder()
     local gardens = Workspace:FindFirstChild("Gardens")
     if not gardens then return nil end
@@ -43,10 +42,10 @@ local function getGardenFolder()
 end
 
 -- ============================================================
--- TOGGLE: Hide / Show Plants & Fruits
+-- TOGGLE: Hide Plants, Fruits & Trees
 -- ============================================================
 local HideToggle = GardenTab:CreateToggle({
-    Name = "Hide Plants & Fruits",
+    Name = "Hide Plants, Fruits & Trees",
     CurrentValue = true, -- start hidden
     Flag = "HideToggle",
     Callback = function(Value)
@@ -54,7 +53,7 @@ local HideToggle = GardenTab:CreateToggle({
         if not folder then return end
         for _, item in ipairs(folder:GetDescendants()) do
             if item:IsA("BasePart") or item:IsA("Model") then
-                if item.Name == "Plants" or item.Name == "Fruits" then
+                if item.Name == "Plant" or item.Name == "Fruit" or item.Name == "Tree" then
                     item.Transparency = Value and 1 or 0
                 end
             end
@@ -95,12 +94,11 @@ GardenTab:CreateButton({
     end,
 })
 
--- Initial hide (because toggle starts true, but callback runs only on UI change,
--- we manually call it once)
+-- Initial hide (including trees)
 local folder = getGardenFolder()
 if folder then
     for _, item in ipairs(folder:GetDescendants()) do
-        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plants" or item.Name == "Fruits") then
+        if (item:IsA("BasePart") or item:IsA("Model")) and (item.Name == "Plant" or item.Name == "Fruit" or item.Name == "Tree") then
             item.Transparency = 1
         end
     end
