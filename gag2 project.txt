@@ -57,10 +57,34 @@ end
 -- Helper function to handle visibility and colors seamlessly
 local function updateVisibility(instance, isHidden, plantColor)
     local function applyState(part)
-        -- 1. Memorize the original native transparency so we don't accidentally reveal invisible hitboxes
+    -- Only learn/cache the TRUE native transparency when we are NOT hiding.
+    -- This prevents caching 1.0 as the "native" value when parts spawn while hidden.
+    if not isHidden then
         if _G.PartCache[part] == nil then
             _G.PartCache[part] = part.Transparency
         end
+    end
+
+    local nativeTrans = _G.PartCache[part]
+    if nativeTrans == nil then
+        -- Fallback: if we never cached it (because we were hidden), assume visible.
+        nativeTrans = 0
+    end
+
+    local desiredTrans = isHidden and 1 or nativeTrans
+    if part.Transparency ~= desiredTrans then
+        part.Transparency = desiredTrans
+    end
+
+    -- recolor logic stays the same
+    if part:IsA("BasePart") and not isHidden then
+        if (part:IsA("TrussPart") or part.Name == "Base" or part.Name == "CollisionBlock" or tonumber(part.Name) ~= nil) then
+            if part.BrickColor.Name == "Medium stone grey" or part.BrickColor.Name == "Light stone grey" then
+                part.BrickColor = plantColor
+            end
+        end
+    end
+end
         
         local nativeTrans = _G.PartCache[part]
         
