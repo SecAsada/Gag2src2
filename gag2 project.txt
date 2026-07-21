@@ -1,1 +1,112 @@
 
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- ============================================================
+-- CREATE WINDOW
+-- ============================================================
+local Window = Rayfield:CreateWindow({
+    Name = "Sec Asada : Grow a Garden 2",
+    LoadingTitle = "SEC ASADA",
+    LoadingSubtitle = "@Secre_Dev",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false,
+})
+
+-- ============================================================
+-- MAIN TABS & VARIABLES
+-- ============================================================
+local MainTab = Window:CreateTab("Main Features", nil)
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Global control states matching your logic
+_G.HideTrees = false
+_G.HideFruits = false
+
+-- Helper function to refresh transparency updates on your current plot plants
+local function updatePlotVisuals()
+    local plotId = LocalPlayer:GetAttribute("PlotId")
+    if not plotId then return end
+    
+    local gardens = Workspace:FindFirstChild("Gardens")
+    if not gardens then return end
+    
+    local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
+    if not plot then return end
+    
+    local plants = plot:FindFirstChild("Plants")
+    if not plants then return end
+
+    for _, plant in ipairs(plants:GetChildren()) do
+        for _, child in ipairs(plant:GetChildren()) do
+            if child.Name ~= "Fruits" and child:IsA("BasePart") and not child:IsA("TrussPart") then
+                child.Transparency = _G.HideTrees and 1 or 0
+            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("")) then
+                for _, desc in ipairs(child:GetDescendants()) do
+                    if desc:IsA("BasePart") and not desc:IsA("TrussPart") then
+                        desc.Transparency = _G.HideTrees and 1 or 0
+                    end
+                end
+            end
+        end
+
+        -- ---------- Hide/Show Fruits ----------
+        local fruitsFolder = plant:FindFirstChild("Plants") -- or Fruits
+        local fruitsFolder = plant:FindFirstChild("Fruits")
+        if fruitsFolder then
+            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                for _, part in ipairs(fruit:GetDescendants()) do
+                    if part:IsA("BasePart") and not part:IsA("TrussPart") then
+                        part.Transparency = _G.HideFruits and 1 or 0
+                    end
+                end
+            end
+        end
+    end
+end
+
+        -- ---------- Hide/Show Fruits ----------
+        local fruitsFolder = plant:FindFirstChild("Fruits")
+        if fruitsFolder then
+            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                for _, part in ipairs(fruit:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = _G.HideFruits and 1 or 0
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Automatic dynamic monitoring for when new plants grow or load into your plot
+task.spawn(function()
+    while task.wait(1) do
+        local plotId = LocalPlayer:GetAttribute("PlotId")
+        if plotId then
+            local plot = Workspace:FindFirstChild("Gardens") and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
+            local plants = plot and plot:FindFirstChild("Plants")
+            if plants then
+                updatePlotVisuals()
+            end
+        end
+    end
+end)
+
+-- ============================================================
+-- UI TOGGLE CONTROLS
+-- ============================================================
