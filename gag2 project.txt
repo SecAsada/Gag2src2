@@ -107,6 +107,41 @@ task.spawn(function()
     end
 end)
 
+
+-- Toggle for Trees
+MainTab:CreateToggle({
+    Name = "Hide Trees / Plant Trunks",
+    CurrentValue = false,
+    Flag = "HideTreesPlotFlag",
+    Callback = function(Value)
+        _G.HideTrees = Value
+        updatePlotVisuals()
+        
+        Rayfield:Notify({
+            Title = "Visuals Updated",
+            Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+-- Toggle for Fruits
+MainTab:CreateToggle({
+    Name = "Hide Fruits",
+    CurrentValue = false,
+    Flag = "HideFruitsPlotFlag",
+    Callback = function(Value)
+        _G.HideFruits = Value
+        updatePlotVisuals()
+        
+        Rayfield:Notify({
+            Title = "Visuals Updated",
+            Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
 -- ============================================================
 -- UI TOGGLE CONTROLS
 -- ============================================================
