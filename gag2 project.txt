@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- LOAD THE LIBRARY
 -- ============================================================
@@ -33,25 +32,28 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Global control states matching your logic
+-- Global control states
 _G.HideTrees = false
 _G.HideFruits = false
 
--- Helper function to refresh transparency updates on your current plot plants
+-- ============================================================
+-- UPDATE VISUALS (FIXED)
+-- ============================================================
 local function updatePlotVisuals()
     local plotId = LocalPlayer:GetAttribute("PlotId")
     if not plotId then return end
-    
+
     local gardens = Workspace:FindFirstChild("Gardens")
     if not gardens then return end
-    
+
     local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
     if not plot then return end
-    
+
     local plants = plot:FindFirstChild("Plants")
     if not plants then return end
 
     for _, plant in ipairs(plants:GetChildren()) do
+        -- Hide/Show trunks & stems (all non‑fruit parts)
         for _, child in ipairs(plant:GetChildren()) do
             if child.Name ~= "Fruits" and child:IsA("BasePart") and not child:IsA("TrussPart") then
                 child.Transparency = _G.HideTrees and 1 or 0
@@ -64,22 +66,7 @@ local function updatePlotVisuals()
             end
         end
 
-        -- ---------- Hide/Show Fruits ----------
-        local fruitsFolder = plant:FindFirstChild("Plants") -- or Fruits
-        local fruitsFolder = plant:FindFirstChild("Fruits")
-        if fruitsFolder then
-            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                for _, part in ipairs(fruit:GetDescendants()) do
-                    if part:IsA("BasePart") and not part:IsA("TrussPart") then
-                        part.Transparency = _G.HideFruits and 1 or 0
-                    end
-                end
-            end
-        end
-    end
-end
-
-        -- ---------- Hide/Show Fruits ----------
+        -- Hide/Show fruits
         local fruitsFolder = plant:FindFirstChild("Fruits")
         if fruitsFolder then
             for _, fruit in ipairs(fruitsFolder:GetChildren()) do
@@ -93,22 +80,16 @@ end
     end
 end
 
--- Automatic dynamic monitoring for when new plants grow or load into your plot
+-- Continuously refresh visuals (in case new plants grow)
 task.spawn(function()
     while task.wait(1) do
-        local plotId = LocalPlayer:GetAttribute("PlotId")
-        if plotId then
-            local plot = Workspace:FindFirstChild("Gardens") and Workspace.Gardens:FindFirstChild("Plot" .. tostring(plotId))
-            local plants = plot and plot:FindFirstChild("Plants")
-            if plants then
-                updatePlotVisuals()
-            end
-        end
+        updatePlotVisuals()
     end
 end)
 
-
--- Toggle for Trees
+-- ============================================================
+-- UI TOGGLES
+-- ============================================================
 MainTab:CreateToggle({
     Name = "Hide Trees / Plant Trunks",
     CurrentValue = false,
@@ -116,7 +97,7 @@ MainTab:CreateToggle({
     Callback = function(Value)
         _G.HideTrees = Value
         updatePlotVisuals()
-        
+
         Rayfield:Notify({
             Title = "Visuals Updated",
             Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
@@ -125,7 +106,7 @@ MainTab:CreateToggle({
         })
     end,
 })
--- Toggle for Fruits
+
 MainTab:CreateToggle({
     Name = "Hide Fruits",
     CurrentValue = false,
@@ -133,7 +114,7 @@ MainTab:CreateToggle({
     Callback = function(Value)
         _G.HideFruits = Value
         updatePlotVisuals()
-        
+
         Rayfield:Notify({
             Title = "Visuals Updated",
             Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
@@ -142,6 +123,3 @@ MainTab:CreateToggle({
         })
     end,
 })
--- ============================================================
--- UI TOGGLE CONTROLS
--- ============================================================
