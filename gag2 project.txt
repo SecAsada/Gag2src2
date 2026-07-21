@@ -32,73 +32,114 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Global control states
+-- Global control states matching your logic
 _G.HideTrees = false
 _G.HideFruits = false
-_G.HideTrusses = false -- Added for Truss/Square boxes
 
--- ============================================================
--- UPDATE VISUALS (FIXED)
--- ============================================================
+-- Weak table to safely cache the original native transparency of parts
+if not _G.PartCache then
+    _G.PartCache = setmetatable({}, {__mode = "k"})
+end
+
+-- Helper function to find the dominant color of the plant
+local function getPlantColor(plant)
+    for _, desc in ipairs(plant:GetDescendants()) do
+        if desc:IsA("BasePart") and desc.Name ~= "Fruits" and desc.Name ~= "Base" and not desc:IsA("TrussPart") and tonumber(desc.Name) == nil then
+            if desc.Transparency < 1 then
+                return desc.BrickColor
+            end
+        end
+    end
+    return BrickColor.new("Parsley green") -- Fallback normal color
+end
+
+-- Helper function to handle visibility and colors seamlessly
+local function updateVisibility(instance, isHidden, plantColor)
+    local function applyState(part)
+        -- 1. Memorize the original native transparency so we don't accidentally reveal invisible hitboxes
+        if _G.PartCache[part] == nil then
+            _G.PartCache[part] = part.Transparency
+        end
+        
+        local nativeTrans = _G.PartCache[part]
+        
+        -- If hiding, force 1. If visible, RESTORE to its normal native transparency
+        local desiredTrans = isHidden and 1 or nativeTrans
+        
+        if part.Transparency ~= desiredTrans then
+            part.Transparency = desiredTrans
+        end
+        
+        -- 2. Recolor any ugly grey structural parts to the plant's normal color
+        if part:IsA("BasePart") and not isHidden then
+            if (part:IsA("TrussPart") or part.Name == "Base" or part.Name == "CollisionBlock" or tonumber(part.Name) ~= nil) then
+                if part.BrickColor.Name == "Medium stone grey" or part.BrickColor.Name == "Light stone grey" then
+                    part.BrickColor = plantColor
+                end
+            end
+        end
+    end
+
+    if instance:IsA("BasePart") then
+        applyState(instance)
+    elseif instance:IsA("Decal") or instance:IsA("Texture") then
+        if _G.PartCache[instance] == nil then _G.PartCache[instance] = instance.Transparency end
+        local dTrans = isHidden and 1 or _G.PartCache[instance]
+        if instance.Transparency ~= dTrans then instance.Transparency = dTrans end
+    end
+    
+    for _, desc in ipairs(instance:GetDescendants()) do
+        if desc:IsA("BasePart") then
+            applyState(desc)
+        elseif desc:IsA("Decal") or desc:IsA("Texture") then
+            if _G.PartCache[desc] == nil then _G.PartCache[desc] = desc.Transparency end
+            local dTrans = isHidden and 1 or _G.PartCache[desc]
+            if desc.Transparency ~= dTrans then desc.Transparency = dTrans end
+        end
+    end
+end
+
+-- Helper function to refresh transparency updates on your current plot plants
 local function updatePlotVisuals()
     local plotId = LocalPlayer:GetAttribute("PlotId")
     if not plotId then return end
-
+    
     local gardens = Workspace:FindFirstChild("Gardens")
     if not gardens then return end
-
+    
     local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
     if not plot then return end
-
+    
     local plants = plot:FindFirstChild("Plants")
     if not plants then return end
 
     for _, plant in ipairs(plants:GetChildren()) do
-        -- Hide/Show trunks, stems, and trusses
+        local pColor = getPlantColor(plant)
+        
         for _, child in ipairs(plant:GetChildren()) do
-            if child.Name ~= "Fruits" and child:IsA("BasePart") then
-                if child:IsA("TrussPart") then
-                    child.Transparency = _G.HideTrusses and 1 or 0
-                else
-                    child.Transparency = _G.HideTrees and 1 or 0
-                end
-            elseif child.Name ~= "Fruits" and (child:IsA("Model") or child:IsA("")) then
-                for _, desc in ipairs(child:GetDescendants()) do
-                    if desc:IsA("BasePart") then
-                        if desc:IsA("TrussPart") then
-                            desc.Transparency = _G.HideTrusses and 1 or 0
-                        else
-                            desc.Transparency = _G.HideTrees and 1 or 0
-                        end
-                    end
-                end
-            end
-        end
-
-        -- Hide/Show fruits
-        local fruitsFolder = plant:FindFirstChild("Fruits")
-        if fruitsFolder then
-            for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                for _, part in ipairs(fruit:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = _G.HideFruits and 1 or 0
-                    end
-                end
+            if child.Name == "Fruits" then
+                -- ---------- Hide/Show Fruits ----------
+                updateVisibility(child, _G.HideFruits, pColor)
+            else
+                -- ---------- Hide/Show Trees ----------
+                updateVisibility(child, _G.HideTrees, pColor)
             end
         end
     end
 end
 
--- Continuously refresh visuals (in case new plants grow)
+-- Automatic dynamic monitoring for when new plants grow or load into your plot
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.05) do
         updatePlotVisuals()
     end
 end)
 
 -- ============================================================
--- UI TOGGLES
+-- UI TOGGLE CONTROLS
 -- ============================================================
+
+-- Toggle for Trees
 MainTab:CreateToggle({
     Name = "Hide Trees / Plant Trunks",
     CurrentValue = false,
@@ -106,7 +147,7 @@ MainTab:CreateToggle({
     Callback = function(Value)
         _G.HideTrees = Value
         updatePlotVisuals()
-
+        
         Rayfield:Notify({
             Title = "Visuals Updated",
             Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
@@ -116,24 +157,7 @@ MainTab:CreateToggle({
     end,
 })
 
--- NEW TOGGLE: Controls the square truss segments specifically
-MainTab:CreateToggle({
-    Name = "Hide Truss Parts (Square Boxes)",
-    CurrentValue = false,
-    Flag = "HideTrussesPlotFlag",
-    Callback = function(Value)
-        _G.HideTrusses = Value
-        updatePlotVisuals()
-
-        Rayfield:Notify({
-            Title = "Visuals Updated",
-            Content = Value and "Truss boxes are now hidden!" or "Truss boxes are now visible!",
-            Duration = 2,
-            Image = 4483362458,
-        })
-    end,
-})
-
+-- Toggle for Fruits
 MainTab:CreateToggle({
     Name = "Hide Fruits",
     CurrentValue = false,
@@ -141,7 +165,7 @@ MainTab:CreateToggle({
     Callback = function(Value)
         _G.HideFruits = Value
         updatePlotVisuals()
-
+        
         Rayfield:Notify({
             Title = "Visuals Updated",
             Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
