@@ -821,7 +821,7 @@ task.spawn(function()
                                 for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                                     -- ALWAYS ignore fruits weighing 80kg or more (no toggle)
                                     local weight = fruit:GetAttribute("Weight") or 0
-                                    if weight < 80 then
+                                    if weight < 8 then
                                         local harvestFruitId = fruit:GetAttribute("FruitId")
                                         if harvestFruitId then
                                             Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
