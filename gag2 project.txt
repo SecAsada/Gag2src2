@@ -1,23 +1,28 @@
 -- ============================================================
 -- LOAD THE LIBRARY
 -- ============================================================
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- Global script options configuration
+-- ============================================================
+-- GLOBAL SCRIPT OPTIONS
+-- ============================================================
 local Options = {
     AutoHarvest = true,
     HarvestFruits = {"Tomato", "Apple"}, -- Add your fruit names here
+
     FilterMutations = false,
     HarvestMutations = {},
-    FilterWeight = false,
+
+    -- If ON: SKIP fruits that are 80kg and above (or above slider value)
+    FilterWeight = true,
     MaxWeight = 80
 }
 
--- Fake/Placeholder Networking environment (Ensure your script defines this)
--- local Networking = ... 
+-- Ensure your script defines Networking
+-- local Networking = ...
 
 -- ============================================================
--- CREATE WINDOW & TABS
+-- CREATE WINDOW & TAB
 -- ============================================================
 local Window = Rayfield:CreateWindow({
     Name = " Sec Asada  🇵🇭 Grow a Garden 2",
@@ -33,21 +38,21 @@ local Window = Rayfield:CreateWindow({
         Invite = "",
         RememberJoins = true
     },
-    KeySystem = false,
+    KeySystem = false
 })
 
--- Create the Farm Tab
-local FarmTab = Window:CreateTab("Auto Farm", 4483362458) -- section name, icon ID
+local FarmTab = Window:CreateTab("Auto Farm", 4483362458)
 
 -- ============================================================
 -- UI CONTROLS
 -- ============================================================
+
 FarmTab:CreateToggle({
-    Name = "Filter by Max Weight",
-    CurrentValue = false,
+    Name = "Filter by Max Weight (skip 80kg+)",
+    CurrentValue = Options.FilterWeight,
     Flag = "FilterWeightToggle",
-    Callback = function(v) 
-        Options.FilterWeight = v 
+    Callback = function(v)
+        Options.FilterWeight = v
     end,
 })
 
@@ -55,17 +60,16 @@ FarmTab:CreateSlider({
     Name = "Max Weight (kg)",
     Range = {0, 200},
     Increment = 1,
-    CurrentValue = 80,   -- default: skip 80+ kg
+    CurrentValue = Options.MaxWeight, -- default: skip 80kg+
     Flag = "MaxWeightSlider",
-    Callback = function(v) 
-        Options.MaxWeight = v 
+    Callback = function(v)
+        Options.MaxWeight = v
     end,
 })
 
 -- ============================================================
 -- HARVEST CORE LOGIC
 -- ============================================================
--- Helper function to check table contents
 local function tableContains(tbl, val)
     for _, value in ipairs(tbl) do
         if value == val then return true end
@@ -73,36 +77,34 @@ local function tableContains(tbl, val)
     return false
 end
 
--- Example execution block (Put this inside your main task/while loop)
 local function processHarvest(plant, seedName, mutation)
     if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
         local shouldHarvest = true
-        
+
         -- Mutation Filter Check
         if Options.FilterMutations then
             if not mutation or not tableContains(Options.HarvestMutations, mutation) then
                 shouldHarvest = false
             end
         end
-        
-        -- Execute Harvest if validation passes
+
         if shouldHarvest then
             local harvestPlantId = plant:GetAttribute("PlantId")
             if harvestPlantId then
                 local fruitsFolder = plant:FindFirstChild("Fruits")
-                
+
                 if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                     for _, fruit in ipairs(fruitsFolder:GetChildren()) do
                         local harvestFruitId = fruit:GetAttribute("FruitId")
                         if harvestFruitId then
-                            
-                            -- -------- WEIGHT CHECK --------
+
+                            -- -------- WEIGHT CHECK (SKIP 80kg+ by default) --------
                             local weight = fruit:GetAttribute("Weight") or 0
-                            if Options.FilterWeight and weight > Options.MaxWeight then
-                                continue  -- Skip this specific fruit if it's too heavy
+                            if Options.FilterWeight and weight >= Options.MaxWeight then
+                                continue -- skip this fruit if it's too heavy (80kg+ default)
                             end
-                            -- ------------------------------
-                            
+                            -- -----------------------------------------------------
+
                             Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
                         end
                     end
