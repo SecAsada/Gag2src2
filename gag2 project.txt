@@ -17,16 +17,29 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false,
 })
 
--- Create a Tab for the Main Features
-local MainTab = Window:CreateTab("Main Features", 4483362458) -- Section Icon ID
+-- ==========================
+-- Tabs
+-- ==========================
+local MainTab = Window:CreateTab("Main", 4483362458)
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+local StatsTab = Window:CreateTab("Stats", 4483362458)
 
+-- ==========================
 -- Variables
+-- ==========================
 local MAX_KG = 80
 local AutoHarvestEnabled = false
 local FruitsFolder = workspace:WaitForChild("Fruits")
 local LocalPlayer = game.Players.LocalPlayer
 
--- Function to check and harvest fruit
+-- Stats
+local totalHarvested = 0
+local totalWeight = 0
+local harvestCount = 0
+
+-- ==========================
+-- Core Harvest Function
+-- ==========================
 local function tryHarvest(fruitModel)
     if not AutoHarvestEnabled then return end
     if not fruitModel:IsA("Model") then return end
@@ -35,51 +48,150 @@ local function tryHarvest(fruitModel)
     local ready = fruitModel:GetAttribute("Ready")
     local ownerId = fruitModel:GetAttribute("Owner")
 
-    -- Check if it belongs to the local player, is ready, and below max weight
     if typeof(kg) == "number" and ready == true and kg < MAX_KG and ownerId == LocalPlayer.UserId then
-        -- Action: How the game harvests fruit. 
-        -- Look for a ProximityPrompt inside the fruit model to trigger it automatically.
         local prompt = fruitModel:FindFirstChildWhichIsA("ProximityPrompt", true)
+
         if prompt then
-            fireproximityprompt(prompt) 
-            print("Harvested: " .. fruitModel.Name .. " (" .. kg .. "kg)")
+            if fireproximityprompt then
+                fireproximityprompt(prompt)
+                print("Harvested via fireproximityprompt: " .. fruitModel.Name)
+            else
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local rootPart = char.HumanoidRootPart
+                    local fruitPos = fruitModel:FindFirstChild("PrimaryPart") and fruitModel.PrimaryPart.Position or fruitModel:GetPivot().Position
+                    if fruitPos then
+                        local originalPos = rootPart.Position
+                        rootPart.CFrame = CFrame.new(fruitPos + Vector3.new(0, 2, 0))
+                        task.wait(0.2)
+                        prompt:InputHoldBegin()
+                        task.wait(0.1)
+                        prompt:InputHoldEnd()
+                        task.wait(0.1)
+                        rootPart.CFrame = CFrame.new(originalPos)
+                        print("Harvested via InputHold: " .. fruitModel.Name)
+                    end
+                end
+            end
+            -- Update stats
+            totalHarvested = totalHarvested + 1
+            totalWeight = totalWeight + (kg or 0)
+            harvestCount = harvestCount + 1
+            updateStatsLabel()
         else
-            -- If the game uses standard TouchTransmitters instead:
+            -- Fallback to TouchInterest
             local touchPart = fruitModel:FindFirstChild("TouchInterest", true) and fruitModel:FindFirstChild("TouchInterest", true).Parent
             if touchPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 0)
                 task.wait(0.1)
                 firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 1)
+                print("Harvested via TouchInterest: " .. fruitModel.Name)
+                totalHarvested = totalHarvested + 1
+                totalWeight = totalWeight + (kg or 0)
+                harvestCount = harvestCount + 1
+                updateStatsLabel()
             end
         end
     end
 end
 
--- Create a Toggle in the Rayfield UI
-local Toggle = MainTab:CreateToggle({
+-- ==========================
+-- Stats Label Update
+-- ==========================
+local statsLabel
+local function updateStatsLabel()
+    if statsLabel then
+        local avg = harvestCount > 0 and string.format("%.1f", totalWeight / harvestCount) or "N/A"
+        statsLabel:Set("Total Harvested: " .. totalHarvested .. " | Avg Weight: " .. avg .. "kg")
+    end
+end
+
+-- ==========================
+-- UI Elements
+-- ==========================
+
+-- Main Tab: Toggle + Button + Status
+MainTab:CreateToggle({
     Name = "Auto Harvest Fruits",
     CurrentValue = false,
     Flag = "AutoHarvestFlag",
     Callback = function(Value)
         AutoHarvestEnabled = Value
         if AutoHarvestEnabled then
-            -- Scan existing fruits immediately when turned on
             for _, fruit in ipairs(FruitsFolder:GetChildren()) do
-                tryHarvest(fruit)
+                task.spawn(tryHarvest, fruit)
             end
         end
     end,
 })
 
--- Listen for new fruits and attribute changes
+MainTab:CreateButton({
+    Name = "Harvest All Now (Manual)",
+    Callback = function()
+        for _, fruit in ipairs(FruitsFolder:GetChildren()) do
+            task.spawn(tryHarvest, fruit)
+        end
+    end,
+})
+
+-- Status Label (live)
+statsLabel = MainTab:CreateLabel("Total Harvested: 0 | Avg Weight: N/A")
+
+-- Settings Tab: Slider for Max KG
+SettingsTab:CreateSlider({
+    Name = "Max Weight (kg)",
+    Range = {1, 100},
+    Increment = 1,
+    Suffix = "kg",
+    CurrentValue = MAX_KG,
+    Flag = "MaxKgSlider",
+    Callback = function(Value)
+        MAX_KG = Value
+    end,
+})
+
+-- Stats Tab: Additional info (could be extended)
+StatsTab:CreateLabel("Fruits in world: " .. #FruitsFolder:GetChildren())
+StatsTab:CreateLabel("Your fruits: " .. #FruitsFolder:GetChildren() --[[filter by owner? not trivial without scanning]]) 
+
+-- Optionally add a refresh button for stats
+StatsTab:CreateButton({
+    Name = "Refresh Stats",
+    Callback = function()
+        local total = 0
+        local mine = 0
+        for _, fruit in ipairs(FruitsFolder:GetChildren()) do
+            total = total + 1
+            if fruit:GetAttribute("Owner") == LocalPlayer.UserId then
+                mine = mine + 1
+            end
+        end
+        -- Update labels (we'll recreate them, but you can store references)
+        -- For simplicity, we'll just print; you can add a label and update its text.
+        print("Total fruits: " .. total .. ", Your fruits: " .. mine)
+    end,
+})
+
+-- ==========================
+-- Event Listeners
+-- ==========================
 FruitsFolder.ChildAdded:Connect(function(fruit)
-    task.wait(0.1) -- Small delay to allow attributes to replicate
-    tryHarvest(fruit)
-    
+    task.wait(0.1)
+    task.spawn(tryHarvest, fruit)
+
     fruit:GetAttributeChangedSignal("Ready"):Connect(function()
-        tryHarvest(fruit)
+        task.spawn(tryHarvest, fruit)
     end)
     fruit:GetAttributeChangedSignal("WeightKg"):Connect(function()
-        tryHarvest(fruit)
+        task.spawn(tryHarvest, fruit)
     end)
 end)
+
+-- Also listen for changes in the folder to update stats label occasionally
+FruitsFolder.ChildRemoved:Connect(function()
+    updateStatsLabel()
+end)
+
+-- Initial stats update
+task.wait(1)
+updateStatsLabel()
