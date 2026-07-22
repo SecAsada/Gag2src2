@@ -77,7 +77,10 @@ local Options = {
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
-    -- Removed IgnoreWeight80 option, now always ignore weight >= 80
+    
+    -- NEW: harvest weight filter
+    HarvestWeightFilter = false,
+    HarvestWeights = {},
     
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
@@ -476,6 +479,7 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.HarvestFruits = selected end,
 })
 
+
 FarmTab:CreateToggle({
     Name = "Filter by Mutations",
     CurrentValue = false,
@@ -483,7 +487,14 @@ FarmTab:CreateToggle({
     Callback = function(v) Options.FilterMutations = v end,
 })
 
--- Removed duplicate "Harvest Fruits Filter" dropdown here
+FarmTab:CreateDropdown({
+    Name = "Harvest Fruits Filter",
+    Options = FruitList,
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "HarvestFruitsDrop",
+    Callback = function(selected) Options.HarvestFruits = selected end,
+})
 
 FarmTab:CreateDropdown({
     Name = "Harvest Mutations Filter",
@@ -494,7 +505,26 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.HarvestMutations = selected end,
 })
 
--- (Toggle "Ignore Weight ≥ 80kg" removed; now always ignore weights >= 80)
+-- ============================================================
+-- NEW: Harvest Weight Filter
+-- ============================================================
+FarmTab:CreateSection("Harvest Weight Filter")
+
+FarmTab:CreateToggle({
+    Name = "Enable Harvest Weight Filter",
+    CurrentValue = false,
+    Flag = "HarvestWeightFilterToggle",
+    Callback = function(v) Options.HarvestWeightFilter = v end,
+})
+
+FarmTab:CreateDropdown({
+    Name = "Harvest Weight Selection",
+    Options = {"1x", "2x", "3x", "4x", "4.5x", "5x", "5.5x", "6x"},
+    CurrentOption = {},
+    MultipleOptions = true,
+    Flag = "HarvestWeightsDrop",
+    Callback = function(selected) Options.HarvestWeights = selected end,
+})
 
 FarmTab:CreateSection("Hide Tree PlantsFruit")
 
@@ -819,11 +849,20 @@ task.spawn(function()
                             local fruitsFolder = plant:FindFirstChild("Fruits")
                             if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                 for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                                    -- ALWAYS ignore fruits weighing 80kg or more (no toggle)
-                                    local weight = fruit:GetAttribute("Weight") or 0
-                                    if weight < 8 then
-                                        local harvestFruitId = fruit:GetAttribute("FruitId")
-                                        if harvestFruitId then
+                                    local harvestFruitId = fruit:GetAttribute("FruitId")
+                                    if harvestFruitId then
+                                        -- ============================================
+                                        -- NEW: Harvest weight filter per fruit
+                                        -- ============================================
+                                        local harvestThisFruit = true
+                                        if Options.HarvestWeightFilter and Options.HarvestWeights and #Options.HarvestWeights > 0 then
+                                            local fruitSize = fruit:GetAttribute("SizeMulti") or 1
+                                            local weightStr = tostring(fruitSize) .. "x"
+                                            if not tableContains(Options.HarvestWeights, weightStr) then
+                                                harvestThisFruit = false
+                                            end
+                                        end
+                                        if harvestThisFruit then
                                             Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
                                         end
                                     end
