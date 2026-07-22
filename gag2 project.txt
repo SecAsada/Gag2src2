@@ -1,197 +1,85 @@
--- ============================================================
--- LOAD THE LIBRARY
--- ============================================================
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- ============================================================
--- CREATE WINDOW
--- ============================================================
 local Window = Rayfield:CreateWindow({
-	Name = "Sec Asada : Grow a Garden 2",
-	LoadingTitle = "SEC ASADA",
-	LoadingSubtitle = "@Secre_Dev",
-	ConfigurationSaving = {
-		Enabled = false,
-		FolderName = nil,
-		FileName = "SEC ASADA GAG2"
-	},
-	Discord = {
-		Enabled = false,
-		Invite = "",
-		RememberJoins = true
-	},
-	KeySystem = false,
+    Name = "Sec Asada : Grow a Garden 2",
+    LoadingTitle = "SEC ASADA",
+    LoadingSubtitle = "@Secre_Dev",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "SEC ASADA GAG2"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false,
 })
 
--- ============================================================
--- MAIN TABS & VARIABLES
--- ============================================================
-local MainTab = Window:CreateTab("Main Features", nil)
+-- Create a Tab for the Main Features
+local MainTab = Window:CreateTab("Main Features", 4483362458) -- Section Icon ID
 
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+-- Variables
+local MAX_KG = 80
+local AutoHarvestEnabled = false
+local FruitsFolder = workspace:WaitForChild("Fruits")
+local LocalPlayer = game.Players.LocalPlayer
 
-_G.HideTrees = false
-_G.HideFruits = false
+-- Function to check and harvest fruit
+local function tryHarvest(fruitModel)
+    if not AutoHarvestEnabled then return end
+    if not fruitModel:IsA("Model") then return end
 
--- Weak table cache for original transparency values
-if not _G.PartCache then
-	_G.PartCache = setmetatable({}, { __mode = "k" })
+    local kg = fruitModel:GetAttribute("WeightKg")
+    local ready = fruitModel:GetAttribute("Ready")
+    local ownerId = fruitModel:GetAttribute("Owner")
+
+    -- Check if it belongs to the local player, is ready, and below max weight
+    if typeof(kg) == "number" and ready == true and kg < MAX_KG and ownerId == LocalPlayer.UserId then
+        -- Action: How the game harvests fruit. 
+        -- Look for a ProximityPrompt inside the fruit model to trigger it automatically.
+        local prompt = fruitModel:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt then
+            fireproximityprompt(prompt) 
+            print("Harvested: " .. fruitModel.Name .. " (" .. kg .. "kg)")
+        else
+            -- If the game uses standard TouchTransmitters instead:
+            local touchPart = fruitModel:FindFirstChild("TouchInterest", true) and fruitModel:FindFirstChild("TouchInterest", true).Parent
+            if touchPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 0)
+                task.wait(0.1)
+                firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 1)
+            end
+        end
+    end
 end
 
--- Helper function to find the dominant color of the plant
-local function getPlantColor(plant)
-	for _, desc in ipairs(plant:GetDescendants()) do
-		if desc:IsA("BasePart")
-			and desc.Name ~= "Fruits"
-			and desc.Name ~= "Base"
-			and not desc:IsA("TrussPart")
-			and tonumber(desc.Name) == nil
-		then
-			if desc.Transparency < 1 then
-				return desc.BrickColor
-			end
-		end
-	end
-	return BrickColor.new("Parsley green") -- fallback
-end
+-- Create a Toggle in the Rayfield UI
+local Toggle = MainTab:CreateToggle({
+    Name = "Auto Harvest Fruits",
+    CurrentValue = false,
+    Flag = "AutoHarvestFlag",
+    Callback = function(Value)
+        AutoHarvestEnabled = Value
+        if AutoHarvestEnabled then
+            -- Scan existing fruits immediately when turned on
+            for _, fruit in ipairs(FruitsFolder:GetChildren()) do
+                tryHarvest(fruit)
+            end
+        end
+    end,
+})
 
--- Helper function to handle visibility + recolor
-local function updateVisibility(instance, isHidden, plantColor)
-	local function cacheIfNeeded(obj)
-		if _G.PartCache[obj] == nil then
-			_G.PartCache[obj] = obj.Transparency
-		end
-	end
-
-	local function applyStateToPart(part)
-		-- Only cache TRUE native transparency when we're NOT hiding.
-		-- Prevents caching 1.0 as "native" if parts spawn while hidden.
-		if not isHidden then
-			cacheIfNeeded(part)
-		end
-
-		local nativeTrans = _G.PartCache[part]
-		if nativeTrans == nil then
-			nativeTrans = 0
-		end
-
-		local desiredTrans = isHidden and 1 or nativeTrans
-		if part.Transparency ~= desiredTrans then
-			part.Transparency = desiredTrans
-		end
-
-		-- Recolor grey structural parts back to plant color (only when visible)
-		if not isHidden then
-			if (part:IsA("TrussPart")
-				or part.Name == "Base"
-				or part.Name == "CollisionBlock"
-				or tonumber(part.Name) ~= nil)
-			then
-				local cName = part.BrickColor.Name
-				if cName == "Medium stone grey" or cName == "Light stone grey" then
-					part.BrickColor = plantColor
-				end
-			end
-		end
-	end
-
-	local function applyStateToDecal(decal)
-		-- For decals/textures, caching is always safe (no recolor)
-		cacheIfNeeded(decal)
-		local nativeTrans = _G.PartCache[decal] or 0
-		local desiredTrans = isHidden and 1 or nativeTrans
-		if decal.Transparency ~= desiredTrans then
-			decal.Transparency = desiredTrans
-		end
-	end
-
-	-- Apply to instance itself
-	if instance:IsA("BasePart") then
-		applyStateToPart(instance)
-	elseif instance:IsA("Decal") or instance:IsA("Texture") then
-		applyStateToDecal(instance)
-	end
-
-	-- Apply to descendants
-	for _, desc in ipairs(instance:GetDescendants()) do
-		if desc:IsA("BasePart") then
-			applyStateToPart(desc)
-		elseif desc:IsA("Decal") or desc:IsA("Texture") then
-			applyStateToDecal(desc)
-		end
-	end
-end
-
--- Refresh transparency updates on your current plot plants
-local function updatePlotVisuals()
-	local plotId = LocalPlayer:GetAttribute("PlotId")
-	if not plotId then return end
-
-	local gardens = Workspace:FindFirstChild("Gardens")
-	if not gardens then return end
-
-	local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
-	if not plot then return end
-
-	local plants = plot:FindFirstChild("Plants")
-	if not plants then return end
-
-	for _, plant in ipairs(plants:GetChildren()) do
-		local pColor = getPlantColor(plant)
-
-		for _, child in ipairs(plant:GetChildren()) do
-			if child.Name == "Fruits" then
-				updateVisibility(child, _G.HideFruits, pColor)
-			else
-				updateVisibility(child, _G.HideTrees, pColor)
-			end
-		end
-	end
-end
-
--- Automatic monitoring loop
-task.spawn(function()
-	while task.wait(0.05) do
-		updatePlotVisuals()
-	end
+-- Listen for new fruits and attribute changes
+FruitsFolder.ChildAdded:Connect(function(fruit)
+    task.wait(0.1) -- Small delay to allow attributes to replicate
+    tryHarvest(fruit)
+    
+    fruit:GetAttributeChangedSignal("Ready"):Connect(function()
+        tryHarvest(fruit)
+    end)
+    fruit:GetAttributeChangedSignal("WeightKg"):Connect(function()
+        tryHarvest(fruit)
+    end)
 end)
-
--- ============================================================
--- UI TOGGLE CONTROLS
--- ============================================================
-
-MainTab:CreateToggle({
-	Name = "Hide Trees / Plant Trunks",
-	CurrentValue = false,
-	Flag = "HideTreesPlotFlag",
-	Callback = function(Value)
-		_G.HideTrees = Value
-		updatePlotVisuals()
-
-		Rayfield:Notify({
-			Title = "Visuals Updated",
-			Content = Value and "Plant bodies/trees are now hidden!" or "Plant bodies/trees are now visible!",
-			Duration = 2,
-			Image = 4483362458,
-		})
-	end,
-})
-
-MainTab:CreateToggle({
-	Name = "Hide Fruits",
-	CurrentValue = false,
-	Flag = "HideFruitsPlotFlag",
-	Callback = function(Value)
-		_G.HideFruits = Value
-		updatePlotVisuals()
-
-		Rayfield:Notify({
-			Title = "Visuals Updated",
-			Content = Value and "Fruits are now hidden!" or "Fruits are now visible!",
-			Duration = 2,
-			Image = 4483362458,
-		})
-	end,
-})
