@@ -77,7 +77,7 @@ local Options = {
     FilterMutations = false,
     HarvestFruits = {},
     HarvestMutations = {},
-    IgnoreWeight80 = false,  -- new option
+    -- Removed IgnoreWeight80 option, now always ignore weight >= 80
     
     AutoBuyAllSeeds = false,
     AutoBuySeeds = false,
@@ -494,13 +494,7 @@ FarmTab:CreateDropdown({
     Callback = function(selected) Options.HarvestMutations = selected end,
 })
 
--- New toggle to ignore fruits weighing 80kg or more
-FarmTab:CreateToggle({
-    Name = "Ignore Weight ≥ 80kg",
-    CurrentValue = false,
-    Flag = "IgnoreWeight80Toggle",
-    Callback = function(v) Options.IgnoreWeight80 = v end,
-})
+-- (Toggle "Ignore Weight ≥ 80kg" removed; now always ignore weights >= 80)
 
 FarmTab:CreateSection("Hide Tree PlantsFruit")
 
@@ -825,15 +819,9 @@ task.spawn(function()
                             local fruitsFolder = plant:FindFirstChild("Fruits")
                             if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
                                 for _, fruit in ipairs(fruitsFolder:GetChildren()) do
-                                    -- Check weight ignore toggle
-                                    local shouldCollect = true
-                                    if Options.IgnoreWeight80 then
-                                        local weight = fruit:GetAttribute("Weight") or 0
-                                        if weight >= 80 then
-                                            shouldCollect = false
-                                        end
-                                    end
-                                    if shouldCollect then
+                                    -- ALWAYS ignore fruits weighing 80kg or more (no toggle)
+                                    local weight = fruit:GetAttribute("Weight") or 0
+                                    if weight < 80 then
                                         local harvestFruitId = fruit:GetAttribute("FruitId")
                                         if harvestFruitId then
                                             Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
