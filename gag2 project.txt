@@ -32,108 +32,163 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- Global control states matching your logic
-_G.HideTrees = false
-_G.HideFruits = false
+-- Global control states
+_G.HideTrees = _G.HideTrees or false
+_G.HideFruits = _G.HideFruits or false
 
--- Weak table to safely cache the original native transparency of parts
+-- Cache original values (weak keys so destroyed parts get cleaned up)
 if not _G.PartCache then
-    _G.PartCache = setmetatable({}, {__mode = "k"})
+    _G.PartCache = setmetatable({}, { __mode = "k" })
 end
 
--- Helper function to find the dominant color of the plant
+-- Cache format:
+-- _G.PartCache[obj] = { T = originalTransparency, LTM = originalLocalTransparencyModifier }
+
+local function rememberOriginal(obj)
+    if _G.PartCache[obj] ~= nil then return end
+
+    local t = 0
+    local ltm = 0
+
+    if obj:IsA("BasePart") then
+        t = obj.Transparency
+        ltm = obj.LocalTransparencyModifier
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        t = obj.Transparency
+        ltm = nil
+    else
+        return
+    end
+
+    _G.PartCache[obj] = { T = t, LTM = ltm }
+end
+
+local function restoreOriginal(obj)
+    local cached = _G.PartCache[obj]
+    if not cached then
+        -- If we never cached it (ex: spawned while hidden), assume visible defaults
+        if obj:IsA("BasePart") then
+            obj.Transparency = 0
+            obj.LocalTransparencyModifier = 0
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = 0
+        end
+        return
+    end
+
+    if obj:IsA("BasePart") then
+        obj.Transparency = cached.T or 0
+        obj.LocalTransparencyModifier = cached.LTM or 0
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = cached.T or 0
+    end
+end
+
+local function setHidden(obj, hidden)
+    if obj:IsA("BasePart") then
+        if hidden then
+            obj.Transparency = 1
+            obj.LocalTransparencyModifier = 1
+        else
+            restoreOriginal(obj)
+        end
+    elseif obj:IsA("Decal") or obj:IsA("Texture") then
+        if hidden then
+            obj.Transparency = 1
+        else
+            restoreOriginal(obj)
+        end
+    end
+end
+
 local function getPlantColor(plant)
     for _, desc in ipairs(plant:GetDescendants()) do
-        if desc:IsA("BasePart") and desc.Name ~= "Fruits" and desc.Name ~= "Base" and not desc:IsA("TrussPart") and tonumber(desc.Name) == nil then
+        if desc:IsA("BasePart")
+            and desc.Name ~= "Fruits"
+            and desc.Name ~= "Base"
+            and not desc:IsA("TrussPart")
+            and tonumber(desc.Name) == nil
+        then
+            -- IMPORTANT: use the part's real transparency (excluding LocalTransparencyModifier weirdness)
             if desc.Transparency < 1 then
                 return desc.BrickColor
             end
         end
     end
-    return BrickColor.new("Parsley green") -- Fallback normal color
+    return BrickColor.new("Parsley green")
 end
 
--- Helper function to handle visibility and colors seamlessly
-local function updateVisibility(instance, isHidden, plantColor)
-    local function applyState(part)
-        -- 1. Memorize the original native transparency so we don't accidentally reveal invisible hitboxes
-        if _G.PartCache[part] == nil then
-            _G.PartCache[part] = part.Transparency
-        end
-        
-        local nativeTrans = _G.PartCache[part]
-        
-        -- If hiding, force 1. If visible, RESTORE to its normal native transparency
-        local desiredTrans = isHidden and 1 or nativeTrans
-        
-        if part.Transparency ~= desiredTrans then
-            part.Transparency = desiredTrans
-        end
-        
-        -- 2. Recolor any ugly grey structural parts to the plant's normal color
-        if part:IsA("BasePart") and not isHidden then
+local function recolorGreyStructuralParts(root, plantColor)
+    for _, part in ipairs(root:GetDescendants()) do
+        if part:IsA("BasePart") then
             if (part:IsA("TrussPart") or part.Name == "Base" or part.Name == "CollisionBlock" or tonumber(part.Name) ~= nil) then
-                if part.BrickColor.Name == "Medium stone grey" or part.BrickColor.Name == "Light stone grey" then
+                local bn = part.BrickColor.Name
+                if bn == "Medium stone grey" or bn == "Light stone grey" then
                     part.BrickColor = plantColor
                 end
             end
         end
     end
-
-    if instance:IsA("BasePart") then
-        applyState(instance)
-    elseif instance:IsA("Decal") or instance:IsA("Texture") then
-        if _G.PartCache[instance] == nil then _G.PartCache[instance] = instance.Transparency end
-        local dTrans = isHidden and 1 or _G.PartCache[instance]
-        if instance.Transparency ~= dTrans then instance.Transparency = dTrans end
-    end
-    
-    for _, desc in ipairs(instance:GetDescendants()) do
-        if desc:IsA("BasePart") then
-            applyState(desc)
-        elseif desc:IsA("Decal") or desc:IsA("Texture") then
-            if _G.PartCache[desc] == nil then _G.PartCache[desc] = desc.Transparency end
-            local dTrans = isHidden and 1 or _G.PartCache[desc]
-            if desc.Transparency ~= dTrans then desc.Transparency = dTrans end
-        end
-    end
 end
 
--- Helper function to refresh transparency updates on your current plot plants
 local function updatePlotVisuals()
-    local plotId = LocalPlayer:GetAttribute("PlotId")
+    local plotId = game:GetService("Players").LocalPlayer:GetAttribute("PlotId")
     if not plotId then return end
 
-    local gardens = Workspace:FindFirstChild("Gardens")
+    local gardens = workspace:FindFirstChild("Gardens")
     if not gardens then return end
 
     local plot = gardens:FindFirstChild("Plot" .. tostring(plotId))
     if not plot then return end
 
-    local plants = plot:FindFirstChild("Plants")
-    if not plants then return end
+    local plantsFolder = plot:FindFirstChild("Plants")
+    if not plantsFolder then return end
 
-    for _, plant in ipairs(plants:GetChildren()) do
+    for _, plant in ipairs(plantsFolder:GetChildren()) do
         local pColor = getPlantColor(plant)
 
-        -- Traverse EVERYTHING in the plant
-        for _, desc in ipairs(plant:GetDescendants()) do
-            if desc:IsA("BasePart") or desc:IsA("Decal") or desc:IsA("Texture") then
-                -- If the part is under a Fruits folder, treat as fruit
-                local isFruit = desc:FindFirstAncestor("Fruits") ~= nil
-
-                if isFruit then
-                    updateVisibility(desc, _G.HideFruits, pColor)
-                else
-                    updateVisibility(desc, _G.HideTrees, pColor)
+        -- Cache originals ONLY while visible-mode.
+        -- This prevents "hidden-time caching" from permanently saving Transparency=1.
+        if not _G.HideTrees then
+            for _, obj in ipairs(plant:GetDescendants()) do
+                if obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Texture") then
+                    rememberOriginal(obj)
                 end
             end
         end
+        if not _G.HideFruits then
+            local fruits = plant:FindFirstChild("Fruits")
+            if fruits then
+                for _, obj in ipairs(fruits:GetDescendants()) do
+                    if obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Texture") then
+                        rememberOriginal(obj)
+                    end
+                end
+            end
+        end
+
+        -- Apply hidden/visible state
+        for _, obj in ipairs(plant:GetDescendants()) do
+            if obj:IsA("BasePart") or obj:IsA("Decal") or obj:IsA("Texture") then
+                local isFruit = (obj:FindFirstAncestor("Fruits") ~= nil)
+                if isFruit then
+                    setHidden(obj, _G.HideFruits)
+                else
+                    setHidden(obj, _G.HideTrees)
+                end
+            end
+        end
+
+        -- Only recolor when trees are visible (optional, matches your intent)
+        if not _G.HideTrees then
+            recolorGreyStructuralParts(plant, pColor)
+        end
     end
 end
--- Automatic dynamic monitoring for when new plants grow or load into your plot
+
+-- Loop (you can keep your loop rate; 0.05 is fine but a bit heavy)
 task.spawn(function()
-    while task.wait(0.05) do
+    while task.wait(0.1) do
         updatePlotVisuals()
     end
 end)
