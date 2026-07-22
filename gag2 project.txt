@@ -1,7 +1,26 @@
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+-- ============================================================
+-- LOAD THE LIBRARY
+-- ============================================================
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- Global script options configuration
+local Options = {
+    AutoHarvest = true,
+    HarvestFruits = {"Tomato", "Apple"}, -- Add your fruit names here
+    FilterMutations = false,
+    HarvestMutations = {},
+    FilterWeight = false,
+    MaxWeight = 80
+}
+
+-- Fake/Placeholder Networking environment (Ensure your script defines this)
+-- local Networking = ... 
+
+-- ============================================================
+-- CREATE WINDOW & TABS
+-- ============================================================
 local Window = Rayfield:CreateWindow({
-    Name = "Sec Asada : Grow a Garden 2",
+    Name = " Sec Asada  🇵🇭 Grow a Garden 2",
     LoadingTitle = "SEC ASADA",
     LoadingSubtitle = "@Secre_Dev",
     ConfigurationSaving = {
@@ -17,193 +36,81 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false,
 })
 
--- ==========================
--- Variables
--- ==========================
-local MAX_KG = 80
-local AutoHarvestEnabled = false
-local FruitsFolder = workspace:WaitForChild("Fruits")
-local LocalPlayer = game.Players.LocalPlayer
+-- Create the Farm Tab
+local FarmTab = Window:CreateTab("Auto Farm", 4483362458) -- section name, icon ID
 
--- Stats Tracking
-local totalHarvested = 0
-local totalWeight = 0
-local harvestCount = 0
-local statsLabel = nil -- Will be defined in UI generation
+-- ============================================================
+-- UI CONTROLS
+-- ============================================================
+FarmTab:CreateToggle({
+    Name = "Filter by Max Weight",
+    CurrentValue = false,
+    Flag = "FilterWeightToggle",
+    Callback = function(v) 
+        Options.FilterWeight = v 
+    end,
+})
 
--- ==========================
--- Helper Functions
--- ==========================
-local function updateStatsLabel()
-    if statsLabel and statsLabel.Set then
-        local avg = harvestCount > 0 and string.format("%.1f", totalWeight / harvestCount) or "N/A"
-        statsLabel:Set("Total Harvested: " .. totalHarvested .. " | Avg Weight: " .. avg .. "kg")
+FarmTab:CreateSlider({
+    Name = "Max Weight (kg)",
+    Range = {0, 200},
+    Increment = 1,
+    CurrentValue = 80,   -- default: skip 80+ kg
+    Flag = "MaxWeightSlider",
+    Callback = function(v) 
+        Options.MaxWeight = v 
+    end,
+})
+
+-- ============================================================
+-- HARVEST CORE LOGIC
+-- ============================================================
+-- Helper function to check table contents
+local function tableContains(tbl, val)
+    for _, value in ipairs(tbl) do
+        if value == val then return true end
     end
+    return false
 end
 
--- ==========================
--- Core Harvest Function
--- ==========================
-local function tryHarvest(fruitModel)
-    if not AutoHarvestEnabled then return end
-    if not fruitModel or not fruitModel:IsA("Model") then return end
-
-    local kg = fruitModel:GetAttribute("WeightKg")
-    local ready = fruitModel:GetAttribute("Ready")
-    local ownerId = fruitModel:GetAttribute("Owner")
-
-    if typeof(kg) == "number" and ready == true and kg < MAX_KG and ownerId == LocalPlayer.UserId then
-        local prompt = fruitModel:FindFirstChildWhichIsA("ProximityPrompt", true)
-
-        if prompt then
-            if fireproximityprompt then
-                fireproximityprompt(prompt)
-                print("Harvested via fireproximityprompt: " .. fruitModel.Name)
-            else
-                -- Teleport fallback fallback if executor lacks fireproximityprompt
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("HumanoidRootPart") then
-                    local rootPart = char.HumanoidRootPart
-                    local fruitPos = fruitModel.PrimaryPart and fruitModel.PrimaryPart.Position or fruitModel:GetPivot().Position
-                    if fruitPos then
-                        local originalPos = rootPart.Position
-                        rootPart.CFrame = CFrame.new(fruitPos + Vector3.new(0, 2, 0))
-                        task.wait(0.2)
-                        prompt:InputHoldBegin()
-                        task.wait(0.1)
-                        prompt:InputHoldEnd()
-                        task.wait(0.1)
-                        rootPart.CFrame = CFrame.new(originalPos)
-                        print("Harvested via InputHold: " .. fruitModel.Name)
+-- Example execution block (Put this inside your main task/while loop)
+local function processHarvest(plant, seedName, mutation)
+    if Options.AutoHarvest and seedName and tableContains(Options.HarvestFruits, seedName) then
+        local shouldHarvest = true
+        
+        -- Mutation Filter Check
+        if Options.FilterMutations then
+            if not mutation or not tableContains(Options.HarvestMutations, mutation) then
+                shouldHarvest = false
+            end
+        end
+        
+        -- Execute Harvest if validation passes
+        if shouldHarvest then
+            local harvestPlantId = plant:GetAttribute("PlantId")
+            if harvestPlantId then
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                
+                if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
+                    for _, fruit in ipairs(fruitsFolder:GetChildren()) do
+                        local harvestFruitId = fruit:GetAttribute("FruitId")
+                        if harvestFruitId then
+                            
+                            -- -------- WEIGHT CHECK --------
+                            local weight = fruit:GetAttribute("Weight") or 0
+                            if Options.FilterWeight and weight > Options.MaxWeight then
+                                continue  -- Skip this specific fruit if it's too heavy
+                            end
+                            -- ------------------------------
+                            
+                            Networking.Garden.CollectFruit:Fire(harvestPlantId, harvestFruitId)
+                        end
                     end
+                else
+                    -- Fallback for plants without physical fruit children
+                    Networking.Garden.CollectFruit:Fire(harvestPlantId, "")
                 end
             end
-            
-            -- Update stats safely
-            totalHarvested = totalHarvested + 1
-            totalWeight = totalWeight + kg
-            harvestCount = harvestCount + 1
-            updateStatsLabel()
-            
-        else
-            -- TouchInterest Fallback
-            local touchInterest = fruitModel:FindFirstChild("TouchInterest", true)
-            local touchPart = touchInterest and touchInterest.Parent
-            if touchPart and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 0)
-                task.wait(0.1)
-                firetouchinterest(LocalPlayer.Character.HumanoidRootPart, touchPart, 1)
-                print("Harvested via TouchInterest: " .. fruitModel.Name)
-                
-                totalHarvested = totalHarvested + 1
-                totalWeight = totalWeight + kg
-                harvestCount = harvestCount + 1
-                updateStatsLabel()
-            end
         end
     end
 end
-
--- ==========================
--- UI Tabs
--- ==========================
-local MainTab = Window:CreateTab("Main", 4483362458)
-local SettingsTab = Window:CreateTab("Settings", 4483362458)
-local StatsTab = Window:CreateTab("Stats", 4483362458)
-
--- ==========================
--- UI Elements Construction
--- ==========================
-
-MainTab:CreateToggle({
-    Name = "Auto Harvest Fruits",
-    CurrentValue = false,
-    Flag = "AutoHarvestFlag",
-    Callback = function(Value)
-        AutoHarvestEnabled = Value
-        if AutoHarvestEnabled then
-            for _, fruit in ipairs(FruitsFolder:GetChildren()) do
-                task.spawn(tryHarvest, fruit)
-            end
-        end
-    end,
-})
-
-MainTab:CreateButton({
-    Name = "Harvest All Now (Manual)",
-    Callback = function()
-        for _, fruit in ipairs(FruitsFolder:GetChildren()) do
-            task.spawn(tryHarvest, fruit)
-        end
-    end,
-})
-
--- Assigned AFTER declaration so functions can access it safely
-statsLabel = MainTab:CreateLabel("Total Harvested: 0 | Avg Weight: N/A")
-
-SettingsTab:CreateSlider({
-    Name = "Max Weight (kg)",
-    Range = {1, 100},
-    Increment = 1,
-    Suffix = "kg",
-    CurrentValue = MAX_KG,
-    Flag = "MaxKgSlider",
-    Callback = function(Value)
-        MAX_KG = Value
-    end,
-})
-
--- Dynamic Stats Setup
-local totalWorldFruitsLabel = StatsTab:CreateLabel("Fruits in world: " .. #FruitsFolder:GetChildren())
-local myFruitsLabel = StatsTab:CreateLabel("Your fruits: Calculating...")
-
-local function manualRefreshStats()
-    local total = 0
-    local mine = 0
-    for _, fruit in ipairs(FruitsFolder:GetChildren()) do
-        total = total + 1
-        if fruit:GetAttribute("Owner") == LocalPlayer.UserId then
-            mine = mine + 1
-        end
-    end
-    totalWorldFruitsLabel:Set("Fruits in world: " .. total)
-    myFruitsLabel:Set("Your fruits: " .. mine)
-end
-
-StatsTab:CreateButton({
-    Name = "Refresh Stats",
-    Callback = manualRefreshStats,
-})
-
--- ==========================
--- Event Listeners
--- ==========================
-FruitsFolder.ChildAdded:Connect(function(fruit)
-    task.wait(0.1) 
-    if not fruit:IsA("Model") then return end
-    
-    task.spawn(tryHarvest, fruit)
-
-    -- Hook up dynamic checks if the fruit changes states while standing there
-    local readySignal = fruit:GetAttributeChangedSignal("Ready"):Connect(function()
-        task.spawn(tryHarvest, fruit)
-    end)
-    local weightSignal = fruit:GetAttributeChangedSignal("WeightKg"):Connect(function()
-        task.spawn(tryHarvest, fruit)
-    end)
-    
-    -- Clean up listeners when fruit is destroyed to prevent memory leaks
-    fruit.Destroying:Connect(function()
-        readySignal:Disconnect()
-        weightSignal:Disconnect()
-    end)
-end)
-
-FruitsFolder.ChildRemoved:Connect(function()
-    updateStatsLabel()
-end)
-
--- Initial Kickstart
-task.wait(0.5)
-updateStatsLabel()
-manualRefreshStats()
