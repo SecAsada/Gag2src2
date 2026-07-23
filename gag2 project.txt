@@ -23,10 +23,17 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false,
 })
 
--- ============================================================
--- MAIN TABS & VARIABLES
--- ============================================================
-local MainTab = Window:CreateTab("Main Features", nil)
+local MainTab = Window:CreateTab("MENU", nil)
+
+MainTab:CreateDropdown({
+    Name = "Category",
+    Options = {"MAIN", "AUTO BUY", "GARDEN", "EVENTS", "MISC", "VISUALS"},
+    CurrentOption = "MAIN","MainTab",
+    MultipleOptions = false,
+    Callback = function(cat)
+        -- show/hide sections or run code that builds the UI for that category
+    end,
+})
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
